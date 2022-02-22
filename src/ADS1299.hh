@@ -19,6 +19,7 @@
 
 
 
+
 class ADS1299 {
 public:
   ADS1299();
@@ -36,6 +37,7 @@ public:
   unsigned short int ChGain[8]; // gain for each channel
   
   void setup_master(int _DRDY, int _CS);
+  void setup_slave(int _DRDY, int _CS);
   
   //ADS1299 SPI Command Definitions (Datasheet, Pg. 35)
   //System Commands
@@ -51,7 +53,7 @@ public:
   void RDATA();   // Read one
 
   //Register Read/Write Commands
-  void getDeviceID();
+  byte getDeviceID();
   byte RREG(byte _address);
   //void RREG(byte _address, byte _numRegistersMinusOne);  //to read multiple consecutive registers (Datasheet, pg. 38)
 
@@ -80,8 +82,9 @@ public:
   void setSingleended();
   //------------------------//
 
-  
-  
+
+  void Task_data(void const * argument);
+  TaskHandle_t				task_handle;
 
 private:
   // uninitalised pointers to SPI objects

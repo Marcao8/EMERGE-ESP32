@@ -22,13 +22,17 @@ ADS1299::ADS1299()
   packetloss = 0;
   // **** ----- SPI Setup ----- **** //
   // initialise instance of the SPIClass attached to VSPI
+  // SCLK = 18, MISO = 19, MOSI = 23, SS = 5
+  pinMode(SCK, OUTPUT);
+  pinMode(MOSI, OUTPUT);
+  pinMode(SS, OUTPUT);
+  pinMode(MISO, INPUT);
   vspi = new SPIClass(VSPI);
+  vspi->begin();
+  pinMode(VSPI_SS, OUTPUT); // VSPI SS
+  vspi->beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE1)); // 1...2.4 MHz, clock polarity = 0; clock phase = 1 (pg. 8)
 }
 
-/// <summary>Configures SPI and ADS1299 for</summary>
-/// <param name="_DRDY">Pin which goes HIGH when data is ready to be read by MCU</param>
-// <param name="_CS">Pin which goes LOW when MCU wants to talk to specified ADS1299</param>
-/// <returns>Nothing</returns>
 
 /**
  * @brief Sets up master ADS1299, configures SPI and ADS1299 for
@@ -40,29 +44,58 @@ void ADS1299::setup_master(int _DRDY, int _CS)
 {
   CS = _CS;
   DRDY = _DRDY;
-  
-  // Set direction register for SCK and MOSI pin.
-  // MISO pin automatically overrides to INPUT.
-  // When the SS pin is set as OUTPUT, it can be used as
-  // a general purpose output port (it doesn't influence
-  // SPI operations).
-  // initialise vspi with default pins
-  // SCLK = 18, MISO = 19, MOSI = 23, SS = 5
-  vspi->begin();
-  pinMode(SCK, OUTPUT);
-  pinMode(MOSI, OUTPUT);
-  pinMode(SS, OUTPUT);
-  pinMode(MISO, INPUT);
+
   pinMode(PIN_NUM_RST, OUTPUT);
   pinMode(PIN_NUM_STRT, OUTPUT);
   pinMode(PIN_NUM_PWD, OUTPUT);
   pinMode(PIN_NUM_DRDY, INPUT);
   // set up slave select pins as outputs as the Arduino API
   // doesn't handle automatically pulling SS low
-  pinMode(VSPI_SS, OUTPUT); // VSPI SS
+  digitalWrite(SCK, LOW);
+  digitalWrite(MOSI, LOW);
+  digitalWrite(SS, HIGH);
+  // at startup all inputs must be low
+  digitalWrite(PIN_NUM_RST, LOW);
+  digitalWrite(PIN_NUM_STRT, LOW);
+  // LDO power down
+  digitalWrite(PIN_NUM_PWD, LOW);
+  delay(10); // wait for oscillator startup 20us
+  digitalWrite(PIN_NUM_PWD, HIGH);
 
-  vspi->beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE1)); // 1...2.4 MHz, clock polarity = 0; clock phase = 1 (pg. 8)
+  digitalWrite(PIN_NUM_RST, HIGH);
+  delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
+  SDATAC();                           // DEVICE wakes up in RDATAC so no Registers could be written.
 
+  // Setup Registers for master ADS
+  //CLOCK: CLKSEL pin 1 (through R1); COnf1 1111 0xxx
+  WREG(CONFIG1,0xF5); // Output CLK signal on 
+  //BIAS
+  WREG(MISC1, 0x10); // connect SRB1 to neg Electrodes
+  WREG(CONFIG3, 0xEC);    // b’x1xx 1100  Turn on BIAS amplifier, set internal BIASREF voltage
+  WREG(BIAS_SENSN, 0x00); // CH1 - bias sensing-> all REFELEC
+  WREG(BIAS_SENSP, 0x0F); // CH1-CH4 + bias sensing
+}
+
+/**
+ * @brief Sets up slave ADS1299, configures SPI and ADS1299 for
+ * @details supply slave ADS1299 with clock and BIAS
+ * @param _DRDY DATA Ready pin goes LOW, when DATA is available
+ * @param _CS  CHIP SELECT pin, goes LOW, when MCU communicates with ADS
+ */
+void ADS1299::setup_slave(int _DRDY, int _CS)
+{
+  CS = _CS;
+  DRDY = _DRDY;
+  // Set direction register for SCK and MOSI pin.
+  // MISO pin automatically overrides to INPUT.
+  // initialise vspi with default pins
+  // SCLK = 18, MISO = 19, MOSI = 23, SS = 5
+  pinMode(PIN_NUM_RST, OUTPUT);
+  pinMode(PIN_NUM_STRT, OUTPUT);
+  pinMode(PIN_NUM_PWD, OUTPUT);
+  pinMode(PIN_NUM_DRDY, INPUT);
+  // set up slave select pins as outputs as the Arduino API
+  // doesn't handle automatically pulling SS low
   digitalWrite(SCK, LOW);
   digitalWrite(MOSI, LOW);
   digitalWrite(SS, HIGH);
@@ -74,10 +107,18 @@ void ADS1299::setup_master(int _DRDY, int _CS)
   digitalWrite(PIN_NUM_PWD, LOW);
   delay(10); // wait for oscillator startup 20us
   digitalWrite(PIN_NUM_PWD, HIGH);
-  // at startup all inputs must be low
   digitalWrite(PIN_NUM_RST, HIGH);
   delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
   SDATAC();                           // DEVICE wakes up in RDATAC so no Registers could be written.
+
+  // Setting registers for slave
+  //CLOCK: CLKSEL pin 0 (through J); COnf1 1101 0xxx
+  //WREG(CONFIG1,0xF5); // Output CLK signal on 
+  //BIAS: power down the bias amp
+  WREG(MISC1, 0x10); // connect SRB1 to neg Electrodes
+  WREG(CONFIG3, 0x6C);    // b’x1xx 1100  Turn on BIAS amplifier, set internal BIASREF voltage
+  WREG(BIAS_SENSN, 0x00); // CH1 - bias sensing-> all REFELEC
+  WREG(BIAS_SENSP, 0x0F); // CH1-CH4 + bias sensing
 }
 
 // ADS1299 SPI Command Definitions (Datasheet, Pg. 35)
@@ -260,7 +301,7 @@ float ADS1299::convertHEXtoVolt(long hexdata)
   return voltage;
 }
 
-void ADS1299::getDeviceID()
+byte ADS1299::getDeviceID()
 {
   digitalWrite(CS, LOW); // Low to communicated
 
@@ -270,6 +311,7 @@ void ADS1299::getDeviceID()
   byte data = vspi->transfer(0x00); // byte to read (hopefully 0b???11110) should be 3E or 62
   // Device ID you should get:                    REV_ID[2:0] 1 DEV_ID[1:0] NU_CH[1:0]
   digitalWrite(CS, HIGH); // HIGH to stop communication
+  return data;
 }
 
 void ADS1299::activateTestSignals(byte _channeladdress)
@@ -454,6 +496,16 @@ void ADS1299::printRegisterName(byte _address)
   }
 }
 
+
+void ADS1299::Task_data(void const* param){
+	//working
+
+	while (1)
+	{ 
+		vTaskDelay(1300/portTICK_PERIOD_MS);
+	}
+
+}
 /*
 
     //------------------------//
