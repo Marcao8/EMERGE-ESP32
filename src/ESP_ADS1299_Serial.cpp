@@ -41,34 +41,23 @@ void setup()
   // Now set up two tasks to run independently.
   xTaskCreatePinnedToCore(
       Task_Blink // Function to implement the task
-      ,
-      "Task Blink" // A name just for humans
-      ,
-      1024 // This stack size can be checked & adjusted by reading the Stack Highwater
-      ,
-      NULL // Task input parameter
-      ,
-      1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-      ,
-      NULL // Task handle.
-      ,
-      0); // Core where the task should run
-          //  Some info about ARDUIONO and ESP32 cores: main() runs on core 1 with priority 1
-          //  Core 0 is free for now
+      ,"Task Blink" // A name just for humans
+      ,1024 // This stack size can be checked & adjusted by reading the Stack Highwater
+      ,NULL // Task input parameter
+      ,1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+      ,NULL // Task handle.
+      ,0); // Core where the task should run
+          //  in ARDUINO on ESP32: main() runs on core 1 with priority 1
   xTaskCreatePinnedToCore(
       TaskRead_BAT_V, "ReadBAT_V", 1024 // Stack size
-      ,
-      NULL, 3 // Priority
-      ,
-      NULL, 0);
-  /*
-  xTaskCreatePinnedToCore(
-    Task_printADSdata, "ADSREAD", 1024  // Stack size
-    ,
-    NULL, 2  // Priority
-    ,
-    NULL, 0);
-*/
+      ,NULL, 3 // Priority
+      ,NULL, 0);
+
+    xTaskCreatePinnedToCore(
+      (TaskFunction_t) &ADS1299::Task_data, "ADS1_DATA_TASK", 1024 // Stack size
+      ,NULL, 2 // Priority
+      ,NULL, 1); // core
+
   connectToWiFi(networkName, networkPswd);
   if (WiFi.waitForConnectResult() != WL_CONNECTED)
   {
@@ -162,7 +151,7 @@ void TaskRead_BAT_V(void *pvParameters)
     // Serial.print("Battery Voltage: ");
     // Serial.println(BatteryVoltage);
     digitalWrite(ledBlue, LOW);
-    vTaskDelay(2000);
+    vTaskDelay(1000);
   }
 }
 
