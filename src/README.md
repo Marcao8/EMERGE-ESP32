@@ -1,6 +1,6 @@
 
  
-# ESP32_ADS1299_Serial
+# Description
  Drivers and test program for measurement of up to 16 channel electrocardiography data with an ESP32 and TI ADS1299 on a selfdeveloped PCB.
 
 
