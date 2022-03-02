@@ -1,9 +1,13 @@
-/*
-    Class for interfacing ADS1299
-    @file ADS1299.cpp
-    @author Markus Baecker
-    @version 11/2021
-*/
+/**
+ * @file ADS1299.cpp
+ * @author Markus Bäcker (markus.baecker@ovgu.de)
+ * @brief Class for interfacing ADS1299
+ * @version 0.1
+ * @date 2022-03-02
+ * 
+ * @copyright Copyright (c) 2022
+ * 
+ */
 
 #include "ADS1299.hh"
 
@@ -506,6 +510,37 @@ void ADS1299::Task_data(void const* param){
 	}
 
 }
+
+
+void ADS1299::TI_setup(){
+// TI SETUP https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/634236/ads1298-cannot-get-ecg-signal
+{ /*
+CONFIG1 	0x46
+CONFIG2 	0x10
+CONFIG3 	0x41
+LOFF 	Default
+CH1Set 	0x81
+CH2Set 	0x60
+CH3-8Set 	0x81
+*/
+
+  RREG(CONFIG2);
+  //WREG(CONFIG3,0xEC); // 6C: power down Buffer | EC: enable Bias
+  activateTestSignals(CH4SET); // measure testsignal on CH4
+  WREG(CH1SET, 0x00);          // measures normal on CH1
+  WREG(CH2SET, 0x03);          // measures MVDD on CH2
+  WREG(CH3SET, 0x01);          // shorted  on CH3
+  // ADS1.activateTestSignals(CH4SET); //measure testsignal on CH4
+  WREG(CH5SET, 0x01);     // shorted  on CH5
+  WREG(CH6SET, 0x01);     // shorted  on CH6
+  WREG(MISC1, 0x00);      // Not connect SRB1 to neg Electrodes
+  WREG(BIAS_SENSN, 0x01); // CH1 n bias
+  START();
+  delay(1000);
+}
+
+}
+
 /*
 
     //------------------------//

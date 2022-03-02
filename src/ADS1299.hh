@@ -81,7 +81,7 @@ public:
   void calculateLSB(uint8_t gain, float vref);
   void setSingleended();
   //------------------------//
-
+  void TI_setup(); // for Debugging purpose
 
   void Task_data(void const * argument);
   TaskHandle_t				task_handle;

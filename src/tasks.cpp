@@ -208,7 +208,7 @@ void calcAverage(void *parameters) {
 
 //*****************************************************************************
 // Main (runs as its own task with priority 1 on core 1)
-
+/*
 void setup() {
 
   // Configure Serial
@@ -266,3 +266,6 @@ void setup() {
 void loop() {
   // Execution should never get here
 }
+
+*/
+
