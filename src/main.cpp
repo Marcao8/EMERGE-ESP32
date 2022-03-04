@@ -1,7 +1,12 @@
 /**
- * @brief ESP 32 ADS1299 Serial Interface Prototype
- * ToDo:
-Run Tasks with RTOS on core 0
+ * @file ADS1299.cpp
+ * @author Markus Bäcker (markus.baecker@ovgu.de)
+ * @brief EMERGE ECG main file
+ * @version 0.1
+ * @date 2022-03-02
+ * @note 
+ * @copyright Copyright (c) 2022
+ *  @note Run Tasks with RTOS on core 0
 1. Establish Serial connection from ESP32 to PC
 2. Setup SPI to 1 MHz for ADS com
 3. Setup ADS
@@ -35,7 +40,7 @@ void setup()
   pinMode(ledRed, OUTPUT);
   Serial.begin(2000000);
 
-  ADS1.setup_master(PIN_NUM_DRDY, PIN_CS_1);
+  ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
   delay(100);
 
   // Now set up two tasks to run independently.
@@ -46,7 +51,7 @@ void setup()
       ,NULL // Task input parameter
       ,1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
       ,NULL // Task handle.
-      ,0); // Core where the task should run
+      ,1); // Core where the task should run
           //  in ARDUINO on ESP32: main() runs on core 1 with priority 1
   xTaskCreatePinnedToCore(
       TaskRead_BAT_V, "ReadBAT_V", 1024 // Stack size
@@ -69,7 +74,9 @@ void setup()
   }
   // Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
   delay(10);
-  ADS1.getDeviceID();
+  byte deviceID = ADS1.getDeviceID();
+  Serial.println("Device ID is:");
+  Serial.println(deviceID);
   ADS1.RREG(CONFIG2);
   ADS1.WREG(CONFIG1, 0xD5);
   // ADS1.WREG(CONFIG3,0xEC); // 6C: power down Buffer | EC: enable Bias
@@ -95,18 +102,24 @@ void setup()
   ADS1.WREG(BIAS_SENSN, 0x00); // CH1 n bias sensing
   ADS1.WREG(BIAS_SENSP, 0x0F); // CH1-CH8 p bias sensing
 
-  ADS1.START();
-  delay(1000);
+  ADS1.STOP();
+  //delay(1000);
 }
 
 void loop()
 {
+delay(3000);
+Serial.println("Hello");
+digitalWrite(ledRed, 1);
+digitalWrite(ledBlue, 1);
+digitalWrite(ledGreen, 1);
+delay(100);
+  byte deviceID = ADS1.getDeviceID();
+  Serial.println("Device ID is:");
+  Serial.println(deviceID);
 
-  while (digitalRead(PIN_NUM_DRDY) != LOW)
-  {
-  };
   // when DRDY goes low-> read new data
-  ADS1.updateData();
+  //ADS1.updateData();
 }
 
 /*--------------------------------------------------*/
@@ -127,7 +140,6 @@ void Task_Blink(void *pvParameters)
     ledcWrite(ledpara.PWM_CHANNEL, brightness);
     // change the brightness for next time through the loop:
     brightness = brightness + fadeAmount;
-
     // reverse the direction of the fading at the ends of the fade:
     if (brightness <= 0 || brightness >= 255)
     {
@@ -143,15 +155,14 @@ void TaskRead_BAT_V(void *pvParameters)
   (void)pvParameters;
   for (;;)
   {
-    digitalWrite(ledBlue, HIGH);
 
     int rawADC = analogRead(BatteryPin);
     float BatteryVoltage = 2 * rawADC * 3.3 / 4095; // Voltage devider *ADC*
     // print out the value you read:
-    // Serial.print("Battery Voltage: ");
-    // Serial.println(BatteryVoltage);
+     Serial.print("Battery Voltage: ");
+     Serial.println(BatteryVoltage);
     digitalWrite(ledBlue, LOW);
-    vTaskDelay(1000);
+    vTaskDelay(2000);
   }
 }
 
@@ -162,7 +173,7 @@ void Task_printADSdata(void *pvParameters)
   (void)pvParameters;
   for (;;)
   {
-    if (digitalRead(PIN_NUM_DRDY) == LOW)
+    if (digitalRead(PIN_NUM_DRDY_1) == LOW)
     {
       digitalWrite(PIN_CS_1, LOW);
       //        long output[100][9];
@@ -195,29 +206,4 @@ void Task_printADSdata(void *pvParameters)
   }
 }
 
-// TI SETUP https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/634236/ads1298-cannot-get-ecg-signal
-void TIsetup()
-{ /*
-CONFIG1 	0x46
-CONFIG2 	0x10
-CONFIG3 	0x41
-LOFF 	Default
-CH1Set 	0x81
-CH2Set 	0x60
-CH3-8Set 	0x81
-*/
 
-  ADS1.RREG(CONFIG2);
-  // ADS1.WREG(CONFIG3,0xEC); // 6C: power down Buffer | EC: enable Bias
-  ADS1.activateTestSignals(CH4SET); // measure testsignal on CH4
-  ADS1.WREG(CH1SET, 0x00);          // measures normal on CH1
-  ADS1.WREG(CH2SET, 0x03);          // measures MVDD on CH2
-  ADS1.WREG(CH3SET, 0x01);          // shorted  on CH3
-  // ADS1.activateTestSignals(CH4SET); //measure testsignal on CH4
-  ADS1.WREG(CH5SET, 0x01);     // shorted  on CH5
-  ADS1.WREG(CH6SET, 0x01);     // shorted  on CH6
-  ADS1.WREG(MISC1, 0x00);      // Not connect SRB1 to neg Electrodes
-  ADS1.WREG(BIAS_SENSN, 0x01); // CH1 n bias
-  ADS1.START();
-  delay(1000);
-}

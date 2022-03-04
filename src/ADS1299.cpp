@@ -48,11 +48,11 @@ void ADS1299::setup_master(int _DRDY, int _CS)
 {
   CS = _CS;
   DRDY = _DRDY;
-
+  pinMode(CS,OUTPUT);
   pinMode(PIN_NUM_RST, OUTPUT);
   pinMode(PIN_NUM_STRT, OUTPUT);
   pinMode(PIN_NUM_PWD, OUTPUT);
-  pinMode(PIN_NUM_DRDY, INPUT);
+  pinMode(DRDY, INPUT);
   // set up slave select pins as outputs as the Arduino API
   // doesn't handle automatically pulling SS low
   digitalWrite(SCK, LOW);
@@ -97,7 +97,7 @@ void ADS1299::setup_slave(int _DRDY, int _CS)
   pinMode(PIN_NUM_RST, OUTPUT);
   pinMode(PIN_NUM_STRT, OUTPUT);
   pinMode(PIN_NUM_PWD, OUTPUT);
-  pinMode(PIN_NUM_DRDY, INPUT);
+  pinMode(DRDY, INPUT);
   // set up slave select pins as outputs as the Arduino API
   // doesn't handle automatically pulling SS low
   digitalWrite(SCK, LOW);
@@ -305,6 +305,12 @@ float ADS1299::convertHEXtoVolt(long hexdata)
   return voltage;
 }
 
+/**
+ * @brief Ask ADS1299 for device ID; 
+ * @details  returns REV_ID[2:0] 1 DEV_ID[1:0] NU_CH[1:0]
+ * @result  desired answer is 0x62 
+ * @return byte ID value 
+ */
 byte ADS1299::getDeviceID()
 {
   digitalWrite(CS, LOW); // Low to communicated
@@ -312,7 +318,7 @@ byte ADS1299::getDeviceID()
   vspi->transfer(_SDATAC);          // 0001 0001 SDATAC Stop Data continous
   vspi->transfer(_RREG);            // 0010 0000 RREG Read Register
   vspi->transfer(0x00);             // 0000 0000 Asking for 1 byte ID
-  byte data = vspi->transfer(0x00); // byte to read (hopefully 0b???11110) should be 3E or 62
+  byte data = vspi->transfer(0x00); // byte to read (hopefully 0b???1 1110) should be 3E or 62
   // Device ID you should get:                    REV_ID[2:0] 1 DEV_ID[1:0] NU_CH[1:0]
   digitalWrite(CS, HIGH); // HIGH to stop communication
   return data;
@@ -353,7 +359,7 @@ void ADS1299::updateData()
   calculateLSB(1, 4.5); // 4.5 Vref set
   if (digitalRead(PIN_NUM_STRT == HIGH))
   { // read only if data can be available
-    if (digitalRead(PIN_NUM_DRDY) == LOW)
+    if (digitalRead(DRDY) == LOW)
     {
       digitalWrite(CS, LOW);
       RDATA();

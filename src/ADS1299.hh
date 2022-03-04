@@ -30,6 +30,8 @@ public:
   //}
 
   //Attributes
+  
+  SPIClass *vspi = NULL; // uninitalised pointers to SPI objects
   int DRDY; 
   int CS;  //pin numbers for "Data Ready" (DRDY) and "Chip Select" CS (Datasheet, pg. 26)
   long outputCount; // For packet loss testing
@@ -87,8 +89,7 @@ public:
   TaskHandle_t				task_handle;
 
 private:
-  // uninitalised pointers to SPI objects
-  SPIClass *vspi = NULL;
+  
   
   static void Task_read_DRDY(){}; // Task called by RTOS 
   float LSB; // unit for Voltage conversion

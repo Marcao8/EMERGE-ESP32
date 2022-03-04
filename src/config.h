@@ -15,23 +15,28 @@
 #define ARDUINO_RUNNING_CORE 1
 #endif
 
-// Pins TODO: moveto Standardconstructor 
-const int BatteryPin = 34;  // I/O 6, Reads Battery Voltage through Voltage Devider
-const int ledBlue = 27;     // the number of the LED pin
-const int ledGreen = 14;    // the number of the LED pin
-const int ledRed = 12;      // the number of the LED pin
+#define BOARD_V3 0
+// Pins TODO: moveto Standardconstructor
+#if BOARD_V3
+#define ledBlue 27
+#define ledGreen 14
+#define ledRed 12
+#else
+#define ledBlue 35
+#define ledGreen 32
+#define ledRed 33
+#endif 
+#define BatteryPin 34  // I/O 6, Reads Battery Voltage through Voltage Devider
 
 // Registers
-
-
-
 // ESP32 ADS communication pins
-#define PIN_CS_1 (25) // Pin No. 10 low active
-#define PIN_CS_2 (26) // Pin No. 11
-#define PIN_NUM_RST (4) // active LOW
-#define PIN_NUM_STRT (2) // HIGH active
-#define PIN_NUM_DRDY (15) // active LOW
-#define PIN_NUM_PWD (16) // active LOW
+#define PIN_CS_1 26 // Pin No. 11 low active
+#define PIN_CS_2 27 // Pin No. 12
+#define PIN_NUM_RST 4 // active LOW
+#define PIN_NUM_STRT 2 // HIGH active
+#define PIN_NUM_DRDY_1 15 // active LOW
+#define PIN_NUM_DRDY_2 25 // active LOW
+#define PIN_NUM_PWD 16 // active LOW
 //SCLK = 14, MISO = 12, MOSI = 13, SS = 15
 #define VSPI_MISO   MISO
 #define VSPI_MOSI   MOSI
