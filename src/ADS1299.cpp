@@ -4,23 +4,23 @@
  * @brief Class for interfacing ADS1299
  * @version 0.1
  * @date 2022-03-02
- * 
+ *
  * @copyright Copyright (c) 2022
- * 
+ *
  */
 
 #include "ADS1299.hh"
 
 /**
  * @brief Construct a new ADS1299::ADS1299 object
- * 
+ *
  */
 ADS1299::ADS1299()
-{ // Standard constructor for initial definitions
-  for (int i = 0; i < sizeof ChGain / sizeof ChGain[0]; ++i)//quirky way to get length of array from size
+{                                                            // Standard constructor for initial definitions
+  for (int i = 0; i < sizeof ChGain / sizeof ChGain[0]; ++i) // get length of array from size
   {
-    ChGain[i] = GAIN;  // initial Gain for all channels
-  }                                                                     
+    ChGain[i] = GAIN; // initial Gain for all channels
+  }
   LSB = ((2 * 4.5) / GAIN) / (16777216 - 1); // 2*Vref+-/GAIN/(2^24bits -1)
   Serial.println("ADS constructed");
   packetloss = 0;
@@ -33,10 +33,9 @@ ADS1299::ADS1299()
   pinMode(MISO, INPUT);
   vspi = new SPIClass(VSPI);
   vspi->begin();
-  pinMode(VSPI_SS, OUTPUT); // VSPI SS
+  pinMode(VSPI_SS, OUTPUT);                                         // VSPI SS
   vspi->beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE1)); // 1...2.4 MHz, clock polarity = 0; clock phase = 1 (pg. 8)
 }
-
 
 /**
  * @brief Sets up master ADS1299, configures SPI and ADS1299 for
@@ -48,7 +47,7 @@ void ADS1299::setup_master(int _DRDY, int _CS)
 {
   CS = _CS;
   DRDY = _DRDY;
-  pinMode(CS,OUTPUT);
+  pinMode(CS, OUTPUT);
   pinMode(PIN_NUM_RST, OUTPUT);
   pinMode(PIN_NUM_STRT, OUTPUT);
   pinMode(PIN_NUM_PWD, OUTPUT);
@@ -71,10 +70,10 @@ void ADS1299::setup_master(int _DRDY, int _CS)
   SDATAC();                           // DEVICE wakes up in RDATAC so no Registers could be written.
 
   // Setup Registers for master ADS
-  //CLOCK: CLKSEL pin 1 (through R1); COnf1 1111 0xxx
-  WREG(CONFIG1,0xF5); // Output CLK signal on 
-  //BIAS
-  WREG(MISC1, 0x10); // connect SRB1 to neg Electrodes
+  // CLOCK: CLKSEL pin 1 (through R1); COnf1 1111 0xxx
+  WREG(CONFIG1, 0xF5); // Output CLK signal for second ADS, 500 SPS
+  // BIAS
+  WREG(MISC1, 0x10);      // connect SRB1 to neg Electrodes
   WREG(CONFIG3, 0xEC);    // b’x1xx 1100  Turn on BIAS amplifier, set internal BIASREF voltage
   WREG(BIAS_SENSN, 0x00); // CH1 - bias sensing-> all REFELEC
   WREG(BIAS_SENSP, 0x0F); // CH1-CH4 + bias sensing
@@ -116,13 +115,12 @@ void ADS1299::setup_slave(int _DRDY, int _CS)
   SDATAC();                           // DEVICE wakes up in RDATAC so no Registers could be written.
 
   // Setting registers for slave
-  //CLOCK: CLKSEL pin 0 (through J); COnf1 1101 0xxx
-  //WREG(CONFIG1,0xF5); // Output CLK signal on 
-  //BIAS: power down the bias amp
-  WREG(MISC1, 0x10); // connect SRB1 to neg Electrodes
-  WREG(CONFIG3, 0x6C);    // b’x1xx 1100  Turn on BIAS amplifier, set internal BIASREF voltage
-  WREG(BIAS_SENSN, 0x00); // CH1 - bias sensing-> all REFELEC
-  WREG(BIAS_SENSP, 0x0F); // CH1-CH4 + bias sensing
+  // CLOCK: CLKSEL pin 0 (through J); COnf1 1101 0xxx
+  // WREG(CONFIG1,0xF5); // Output CLK signal on
+  // BIAS: power down the bias amp
+  WREG(CONFIG1, 0xD5); // No CLKOUT, 500 SPS
+  WREG(MISC1, 0x10);   // connect SRB1 to neg Electrodes
+  WREG(CONFIG3, 0x68); // 0 11 0 1 0 0 0  Turn down BIAS amplifier, set internal BIASREF voltage
 }
 
 // ADS1299 SPI Command Definitions (Datasheet, Pg. 35)
@@ -132,7 +130,7 @@ void ADS1299::setup_slave(int _DRDY, int _CS)
 
 /**
  * @brief Wakes up the ADC
- * 
+ *
  */
 void ADS1299::WAKEUP()
 {
@@ -166,7 +164,7 @@ void ADS1299::RESET()
 }
 /**
  * @brief Send SPI command or pull START pin LOW, sync multiple ADS
- * 
+ *
  */
 void ADS1299::START()
 {
@@ -178,7 +176,7 @@ void ADS1299::START()
 }
 /**
  * @brief STOP data conversion, allows REGISTER reading/writing
- * 
+ *
  */
 void ADS1299::STOP()
 {
@@ -245,12 +243,13 @@ byte ADS1299::RREG(byte _address)
 
 /**
  * @brief Write Settings as 1 Byte of Data to Registers
- * 
+ *
  * @param _address of Regsiter
  * @param _value of Register
  */
 void ADS1299::WREG(byte _address, byte _value)
 {
+  digitalWrite(CS, LOW);
   // write one Register
   uint8_t opcode1 = _address + 0x40;
   // Send WREG command & address
@@ -259,7 +258,7 @@ void ADS1299::WREG(byte _address, byte _value)
   vspi->transfer(0x00);
   // Write the value to the register
   vspi->transfer(_value);
-
+  digitalWrite(CS, HIGH);
 } //
 
 /*
@@ -274,7 +273,7 @@ void ADS1299::WREG(byte _address, byte _value, byte _numRegistersMinusOne) {
 /*--------------------------------------------------*/
 /**
  * @brief Sets the adjecent Voltage value of the smallest bit of a measurement
- * 
+ *
  * @param gain currently used Gain value for channel
  * @param vref currently used Voltage reference
  */
@@ -286,7 +285,7 @@ void ADS1299::calculateLSB(uint8_t gain, float vref)
 
 /**
  * @brief Converts hexadecimal output of ADS to voltage value
- * 
+ *
  * @param hexdata incoming 24 bit value
  * @return float output signed voltage in mV (LSB is ~nV)
  */
@@ -306,10 +305,10 @@ float ADS1299::convertHEXtoVolt(long hexdata)
 }
 
 /**
- * @brief Ask ADS1299 for device ID; 
+ * @brief Ask ADS1299 for device ID;
  * @details  returns REV_ID[2:0] 1 DEV_ID[1:0] NU_CH[1:0]
- * @result  desired answer is 0x62 
- * @return byte ID value 
+ * @result  desired answer is 0b 0011 1110
+ * @return byte ID value
  */
 byte ADS1299::getDeviceID()
 {
@@ -324,6 +323,12 @@ byte ADS1299::getDeviceID()
   return data;
 }
 
+/**
+ * @brief  activate testsignal on passed channel; changes CONFIG1/2/3 !
+ *
+ * @param _channeladdress
+ */
+
 void ADS1299::activateTestSignals(byte _channeladdress)
 {
   SDATAC();            // 0001 0001 Stop Data reading, to write new settings
@@ -335,9 +340,13 @@ void ADS1299::activateTestSignals(byte _channeladdress)
   // RDATAC();             // read data continous
 }
 
+/**
+ * @brief setup device for singleended measurement against SRB1
+ *
+ */
+
 void ADS1299::setSingleended()
 {
-  WREG(CONFIG1, 0xD5);
   WREG(CH1SET, 0x00); // measures normal on CH1
   WREG(CH2SET, 0x00); // measures normal on CH1
   WREG(CH3SET, 0x00); // measures normal on CH1
@@ -354,6 +363,10 @@ void ADS1299::setSingleended()
   WREG(BIAS_SENSP, 0x0F); // CH1-CH4 pos bias sensing
 }
 
+/**
+ * @brief retrieve the mos
+ *
+ */
 void ADS1299::updateData()
 {
   calculateLSB(1, 4.5); // 4.5 Vref set
@@ -402,6 +415,7 @@ void ADS1299::updateData()
     }
   }
 }
+
 
 /**
  * Translate received Bytes from ADS Settings to human readible format
@@ -506,45 +520,43 @@ void ADS1299::printRegisterName(byte _address)
   }
 }
 
+void ADS1299::Task_data(void *param) // const
+{
+  // working
 
-void ADS1299::Task_data(void const* param){
-	//working
-
-	while (1)
-	{ 
-		vTaskDelay(1300/portTICK_PERIOD_MS);
-	}
-
+  while (1)
+  { Serial.println("Hello from ADS task");
+    vTaskDelay(3300 / portTICK_PERIOD_MS);
+  }
 }
 
+void ADS1299::TI_setup()
+{
+  // TI SETUP https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/634236/ads1298-cannot-get-ecg-signal
+  { /*
+  CONFIG1 	0x46
+  CONFIG2 	0x10
+  CONFIG3 	0x41
+  LOFF 	Default
+  CH1Set 	0x81
+  CH2Set 	0x60
+  CH3-8Set 	0x81
+  */
 
-void ADS1299::TI_setup(){
-// TI SETUP https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/634236/ads1298-cannot-get-ecg-signal
-{ /*
-CONFIG1 	0x46
-CONFIG2 	0x10
-CONFIG3 	0x41
-LOFF 	Default
-CH1Set 	0x81
-CH2Set 	0x60
-CH3-8Set 	0x81
-*/
-
-  RREG(CONFIG2);
-  //WREG(CONFIG3,0xEC); // 6C: power down Buffer | EC: enable Bias
-  activateTestSignals(CH4SET); // measure testsignal on CH4
-  WREG(CH1SET, 0x00);          // measures normal on CH1
-  WREG(CH2SET, 0x03);          // measures MVDD on CH2
-  WREG(CH3SET, 0x01);          // shorted  on CH3
-  // ADS1.activateTestSignals(CH4SET); //measure testsignal on CH4
-  WREG(CH5SET, 0x01);     // shorted  on CH5
-  WREG(CH6SET, 0x01);     // shorted  on CH6
-  WREG(MISC1, 0x00);      // Not connect SRB1 to neg Electrodes
-  WREG(BIAS_SENSN, 0x01); // CH1 n bias
-  START();
-  delay(1000);
-}
-
+    RREG(CONFIG2);
+    // WREG(CONFIG3,0xEC); // 6C: power down Buffer | EC: enable Bias
+    activateTestSignals(CH4SET); // measure testsignal on CH4
+    WREG(CH1SET, 0x00);          // measures normal on CH1
+    WREG(CH2SET, 0x03);          // measures MVDD on CH2
+    WREG(CH3SET, 0x01);          // shorted  on CH3
+    // ADS1.activateTestSignals(CH4SET); //measure testsignal on CH4
+    WREG(CH5SET, 0x01);     // shorted  on CH5
+    WREG(CH6SET, 0x01);     // shorted  on CH6
+    WREG(MISC1, 0x00);      // Not connect SRB1 to neg Electrodes
+    WREG(BIAS_SENSN, 0x01); // CH1 n bias
+    START();
+    delay(1000);
+  }
 }
 
 /*

@@ -23,14 +23,8 @@
 class ADS1299 {
 public:
   ADS1299();
-  //
-  //Thread_DRDY(){
-    // xTaskCreatePinnedToCore(
-   // Task_read_DRDY, "read_DRDY", 1024, NULL, 3 , NULL, 0);
-  //}
-
-  //Attributes
   
+  //Attributes
   SPIClass *vspi = NULL; // uninitalised pointers to SPI objects
   int DRDY; 
   int CS;  //pin numbers for "Data Ready" (DRDY) and "Chip Select" CS (Datasheet, pg. 26)
@@ -55,19 +49,17 @@ public:
   void RDATA();   // Read one
 
   //Register Read/Write Commands
+
   byte getDeviceID();
   byte RREG(byte _address);
-  //void RREG(byte _address, byte _numRegistersMinusOne);  //to read multiple consecutive registers (Datasheet, pg. 38)
-
   void printRegisterName(byte _address);
-
   void WREG(byte _address, byte _value);                              //
   void WREG(byte _address, byte _value, byte _numRegistersMinusOne);  //
 
   void updateData();
   
 
-  //SPI Arduino Library Stuff
+  //SPI Library 
   byte transfer(byte _data);
 
   //------------------------//
@@ -85,7 +77,7 @@ public:
   //------------------------//
   void TI_setup(); // for Debugging purpose
 
-  void Task_data(void const * argument);
+  void Task_data(void * argument); //const
   TaskHandle_t				task_handle;
 
 private:

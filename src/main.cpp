@@ -24,7 +24,7 @@
 
 // Instances
 LEDparameter ledpara; // define the width of signal or also on time
-ADS1299 ADS1;
+ADS1299 ADS1; //master
 
 // Task function declarations
 void Task_Blink(void *pvParameters);
@@ -41,8 +41,20 @@ void setup()
   Serial.begin(2000000);
 
   ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
-  delay(100);
+  //ADS2 = new ADS1299;
+  //ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
+  
+  //Errorcheck ADS responding
+  if (ADS1.getDeviceID() != 0b00111110)
+  {    
+    Serial.println(F("Ops! ADS1299 master not found")); 
+  }
+  else
+  {    
+    Serial.println(F("Both ADS1299 responding correctly")); 
+  }
 
+  delay(100); // wait for things to settle down
   // Now set up two tasks to run independently.
   xTaskCreatePinnedToCore(
       Task_Blink // Function to implement the task
@@ -52,16 +64,16 @@ void setup()
       ,1 // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
       ,NULL // Task handle.
       ,1); // Core where the task should run
-          //  in ARDUINO on ESP32: main() runs on core 1 with priority 1
+  //  in ARDUINO on ESP32: main() runs on core 1 with priority 1, higher number= higher prio
   xTaskCreatePinnedToCore(
       TaskRead_BAT_V, "ReadBAT_V", 1024 // Stack size
-      ,NULL, 3 // Priority
+      ,NULL, 1 // Priority
       ,NULL, 0);
 
-    xTaskCreatePinnedToCore(
-      (TaskFunction_t) &ADS1299::Task_data, "ADS1_DATA_TASK", 1024 // Stack size
-      ,NULL, 2 // Priority
-      ,NULL, 1); // core
+   // xTaskCreatePinnedToCore(
+   //   (TaskFunction_t) &ADS1299::Task_data, "ADS1_DATA_TASK", 1024 // Stack size
+   //   ,NULL, 1 // Priority
+   //   ,NULL, 0); // core
 
   connectToWiFi(networkName, networkPswd);
   if (WiFi.waitForConnectResult() != WL_CONNECTED)
@@ -73,50 +85,22 @@ void setup()
     }
   }
   // Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
-  delay(10);
-  byte deviceID = ADS1.getDeviceID();
-  Serial.println("Device ID is:");
-  Serial.println(deviceID);
-  ADS1.RREG(CONFIG2);
-  ADS1.WREG(CONFIG1, 0xD5);
-  // ADS1.WREG(CONFIG3,0xEC); // 6C: power down Buffer | EC: enable Bias
-  // ADS1.activateTestSignals(CH4SET); //measure testsignal on CH4
-  ADS1.WREG(CH1SET, 0x00); // measures normal on CH1
-  ADS1.WREG(CH2SET, 0x00); // measures normal on CH1
-  ADS1.WREG(CH3SET, 0x00); // measures normal on CH1
-  ADS1.WREG(CH4SET, 0x00); // measures normal on CH1
-  ADS1.WREG(CH5SET, 0x00); // measures normal on CH1
-  ADS1.WREG(CH6SET, 0x00); // measures normal on CH1
-  ADS1.WREG(CH7SET, 0x00); // measures normal on CH1
-  ADS1.WREG(CH8SET, 0x00);
 
-  // ADS1.WREG(CH2SET,0x03); //measures MVDD on CH2
-  // ADS1.WREG(CH3SET,0x01); //shorted  on CH3
-  // ADS1.activateTestSignals(CH4SET); //measure testsignal on CH4
-  // ADS1.WREG(CH5SET,0x01); //shorted  on CH5
-  // ADS1.WREG(CH6SET,0x01); //shorted  on CH6
-  ADS1.WREG(MISC1, 0x10); // connect SRB1 to neg Electrodes
-
-  // Bias activate
-  ADS1.WREG(CONFIG3, 0xEC);    // b’x1xx 1100  Turn on BIAS amplifier, set internal BIASREF voltage
-  ADS1.WREG(BIAS_SENSN, 0x00); // CH1 n bias sensing
-  ADS1.WREG(BIAS_SENSP, 0x0F); // CH1-CH8 p bias sensing
-
-  ADS1.STOP();
-  //delay(1000);
 }
 
 void loop()
 {
+  //only for debugging purposes
 delay(3000);
 Serial.println("Hello");
 digitalWrite(ledRed, 1);
 digitalWrite(ledBlue, 1);
 digitalWrite(ledGreen, 1);
 delay(100);
-  byte deviceID = ADS1.getDeviceID();
+  byte deviceID1 = ADS1.getDeviceID();
   Serial.println("Device ID is:");
-  Serial.println(deviceID);
+  Serial.println(deviceID1);
+
 
   // when DRDY goes low-> read new data
   //ADS1.updateData();
@@ -161,8 +145,8 @@ void TaskRead_BAT_V(void *pvParameters)
     // print out the value you read:
      Serial.print("Battery Voltage: ");
      Serial.println(BatteryVoltage);
-    digitalWrite(ledBlue, LOW);
-    vTaskDelay(2000);
+
+    vTaskDelay(4000);
   }
 }
 
