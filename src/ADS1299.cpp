@@ -29,12 +29,9 @@ ADS1299::ADS1299()
   // SCLK = 18, MISO = 19, MOSI = 23, SS = 5
   pinMode(SCK, OUTPUT);
   pinMode(MOSI, OUTPUT);
-  pinMode(SS, OUTPUT);
   pinMode(MISO, INPUT);
-  vspi = new SPIClass(VSPI);
-  vspi->begin();
-  pinMode(VSPI_SS, OUTPUT);                                         // VSPI SS
-  vspi->beginTransaction(SPISettings(spiClk, MSBFIRST, SPI_MODE1)); // 1...2.4 MHz, clock polarity = 0; clock phase = 1 (pg. 8)
+  //vspi = new SPIClass(VSPI);
+  
 }
 
 /**
@@ -57,6 +54,12 @@ void ADS1299::setup_master(int _DRDY, int _CS)
   digitalWrite(SCK, LOW);
   digitalWrite(MOSI, LOW);
   digitalWrite(SS, HIGH);
+  //SPI Setup
+  SPI.begin(SCK, MISO, MOSI);											//Initialize SPI library
+	SPI.setBitOrder(MSBFIRST);								//Most significant Bit first
+	SPI.setFrequency(spiClk);					//Sets SPI clock
+	SPI.setDataMode(SPI_MODE1);								//// 1...2.4 MHz, clock polarity = 0; clock phase = 1 (pg. 8)
+
   // at startup all inputs must be low
   digitalWrite(PIN_NUM_RST, LOW);
   digitalWrite(PIN_NUM_STRT, LOW);
@@ -68,15 +71,19 @@ void ADS1299::setup_master(int _DRDY, int _CS)
   digitalWrite(PIN_NUM_RST, HIGH);
   delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
   SDATAC();                           // DEVICE wakes up in RDATAC so no Registers could be written.
-
+  delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
   // Setup Registers for master ADS
   // CLOCK: CLKSEL pin 1 (through R1); COnf1 1111 0xxx
-  WREG(CONFIG1, 0xF5); // Output CLK signal for second ADS, 500 SPS
+  WREG(CONFIG1,0b11110101); // Output CLK signal for second ADS, 500 SPS
   // BIAS
   WREG(MISC1, 0x10);      // connect SRB1 to neg Electrodes
   WREG(CONFIG3, 0xEC);    // b’x1xx 1100  Turn on BIAS amplifier, set internal BIASREF voltage
   WREG(BIAS_SENSN, 0x00); // CH1 - bias sensing-> all REFELEC
   WREG(BIAS_SENSP, 0x0F); // CH1-CH4 + bias sensing
+
+  //Give slave time to react to external CLK
+  delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
+  Serial.println("ADS Master setup finished");
 }
 
 /**
@@ -97,23 +104,17 @@ void ADS1299::setup_slave(int _DRDY, int _CS)
   pinMode(PIN_NUM_STRT, OUTPUT);
   pinMode(PIN_NUM_PWD, OUTPUT);
   pinMode(DRDY, INPUT);
+  pinMode(CS, OUTPUT);
   // set up slave select pins as outputs as the Arduino API
   // doesn't handle automatically pulling SS low
   digitalWrite(SCK, LOW);
   digitalWrite(MOSI, LOW);
   digitalWrite(SS, HIGH);
 
-  // at startup all inputs must be low
-  digitalWrite(PIN_NUM_RST, LOW);
-  digitalWrite(PIN_NUM_STRT, LOW);
-  // LDO power down
-  digitalWrite(PIN_NUM_PWD, LOW);
-  delay(10); // wait for oscillator startup 20us
-  digitalWrite(PIN_NUM_PWD, HIGH);
-  digitalWrite(PIN_NUM_RST, HIGH);
   delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
   SDATAC();                           // DEVICE wakes up in RDATAC so no Registers could be written.
 
+  delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
   // Setting registers for slave
   // CLOCK: CLKSEL pin 0 (through J); COnf1 1101 0xxx
   // WREG(CONFIG1,0xF5); // Output CLK signal on
@@ -135,7 +136,7 @@ void ADS1299::setup_slave(int _DRDY, int _CS)
 void ADS1299::WAKEUP()
 {
   digitalWrite(CS, LOW);
-  vspi->transfer(_WAKEUP);
+  SPI.transfer(_WAKEUP);
   digitalWrite(CS, HIGH);
   delayMicroseconds(4 * TCLK_cycle); // wait 4 Tclk (Pg. 35)
 }
@@ -146,7 +147,7 @@ void ADS1299::WAKEUP()
 void ADS1299::STANDBY()
 {
   digitalWrite(CS, LOW);
-  vspi->transfer(_STANDBY);
+  SPI.transfer(_STANDBY);
   digitalWrite(CS, HIGH);
 }
 
@@ -158,7 +159,7 @@ void ADS1299::STANDBY()
 void ADS1299::RESET()
 {
   digitalWrite(CS, LOW);
-  vspi->transfer(_RESET);
+  SPI.transfer(_RESET);
   digitalWrite(CS, HIGH);
   delayMicroseconds(18 * TCLK_cycle); // Recommended 18 Tclk before using device
 }
@@ -169,7 +170,7 @@ void ADS1299::RESET()
 void ADS1299::START()
 {
   digitalWrite(CS, LOW);
-  vspi->transfer(_START);
+  SPI.transfer(_START);
   digitalWrite(PIN_NUM_STRT, HIGH);
   delayMicroseconds(4 * TCLK_cycle); // wait 4 clk cycles after this command (DS pg.36)
   digitalWrite(CS, HIGH);
@@ -181,7 +182,7 @@ void ADS1299::START()
 void ADS1299::STOP()
 {
   digitalWrite(CS, LOW);
-  vspi->transfer(_STOP);
+  SPI.transfer(_STOP);
   digitalWrite(PIN_NUM_STRT, LOW);
   delayMicroseconds(4 * TCLK_cycle); // wait 4 clk cycles after this command (DS pg.36)
   digitalWrite(CS, HIGH);
@@ -192,7 +193,7 @@ void ADS1299::STOP()
 void ADS1299::RDATA()
 {
   digitalWrite(CS, LOW);
-  vspi->transfer(_RDATA);
+  SPI.transfer(_RDATA);
   digitalWrite(CS, HIGH);
 }
 
@@ -204,7 +205,7 @@ void ADS1299::RDATA()
 void ADS1299::RDATAC()
 {
   digitalWrite(CS, LOW);
-  vspi->transfer(_RDATAC);
+  SPI.transfer(_RDATAC);
   digitalWrite(CS, HIGH);
 }
 
@@ -215,7 +216,7 @@ void ADS1299::RDATAC()
 void ADS1299::SDATAC()
 {
   digitalWrite(CS, LOW);
-  vspi->transfer(_SDATAC);
+  SPI.transfer(_SDATAC);
   digitalWrite(CS, HIGH);
   delayMicroseconds(4 * TCLK_cycle); // wait 4 clk cycles after this command (DS pg.36)
 }
@@ -233,9 +234,9 @@ byte ADS1299::RREG(byte _address)
 {                                           //  reads ONE register at _address
   byte opcode1 = _address + 0x20;           //  RREG expects 001rrrrr where rrrrr = _address
   digitalWrite(CS, LOW);                    //  open SPI
-  vspi->transfer(opcode1);                  //  opcode1
-  vspi->transfer(0x00);                     //  opcode2
-  regData[_address] = vspi->transfer(0x00); //  update mirror location with returned byte
+  SPI.transfer(opcode1);                  //  opcode1
+  SPI.transfer(0x00);                     //  opcode2
+  regData[_address] = SPI.transfer(0x00); //  update mirror location with returned byte
   digitalWrite(CS, HIGH);                   //  close SPI
                                             // Serial.println(regData[_address]);
   return regData[_address];                 // return requested register value
@@ -253,12 +254,13 @@ void ADS1299::WREG(byte _address, byte _value)
   // write one Register
   uint8_t opcode1 = _address + 0x40;
   // Send WREG command & address
-  vspi->transfer(opcode1);
+  SPI.transfer(opcode1);
   // Send number of registers to write
-  vspi->transfer(0x00);
+  SPI.transfer(0x00);
   // Write the value to the register
-  vspi->transfer(_value);
+  SPI.transfer(_value);
   digitalWrite(CS, HIGH);
+   //a 4 t_CLK (~2 us) period must separate the end of one byte (or command) and the next
 } //
 
 /*
@@ -314,10 +316,10 @@ byte ADS1299::getDeviceID()
 {
   digitalWrite(CS, LOW); // Low to communicated
 
-  vspi->transfer(_SDATAC);          // 0001 0001 SDATAC Stop Data continous
-  vspi->transfer(_RREG);            // 0010 0000 RREG Read Register
-  vspi->transfer(0x00);             // 0000 0000 Asking for 1 byte ID
-  byte data = vspi->transfer(0x00); // byte to read (hopefully 0b???1 1110) should be 3E or 62
+  SPI.transfer(_SDATAC);          // 0001 0001 SDATAC Stop Data continous
+  SPI.transfer(_RREG);            // 0010 0000 RREG Read Register
+  SPI.transfer(0x00);             // 0000 0000 Asking for 1 byte ID
+  byte data = SPI.transfer(0x00); // byte to read (hopefully 0b???1 1110) should be 3E or 62
   // Device ID you should get:                    REV_ID[2:0] 1 DEV_ID[1:0] NU_CH[1:0]
   digitalWrite(CS, HIGH); // HIGH to stop communication
   return data;
@@ -375,7 +377,7 @@ void ADS1299::updateData()
     if (digitalRead(DRDY) == LOW)
     {
       digitalWrite(CS, LOW);
-      RDATA();
+      
 
       long output[9];
       long dataPacket;
@@ -384,13 +386,14 @@ void ADS1299::updateData()
       {
         for (int j = 0; j < 3; j++)
         {
-          byte dataByte = vspi->transfer(0x00);      // issue 3 SCLK cycles to read 24 bit
+          byte dataByte = SPI.transfer(0x00);      // issue 3 SCLK cycles to read 24 bit
           dataPacket = (dataPacket << 8) | dataByte; // left shift each Byte
         }
         output[i] = dataPacket; // save 9 entries, 3 Bytes each
         dataPacket = 0;
       }
-      digitalWrite(CS, HIGH);
+       
+      // digitalWrite(CS, HIGH); // HIGH too soon?
 
       // Serial.print(", ");
       for (int i = 1; i < 9; i++)
@@ -413,7 +416,9 @@ void ADS1299::updateData()
       packetloss++;
       Serial.println();
     }
+    digitalWrite(CS, HIGH);
   }
+  
 }
 
 

@@ -25,7 +25,6 @@ public:
   ADS1299();
   
   //Attributes
-  SPIClass *vspi = NULL; // uninitalised pointers to SPI objects
   int DRDY; 
   int CS;  //pin numbers for "Data Ready" (DRDY) and "Chip Select" CS (Datasheet, pg. 26)
   long outputCount; // For packet loss testing
