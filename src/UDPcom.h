@@ -14,7 +14,19 @@
 #include <WiFiUdp.h>
 #include "credentials.h"
 
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "nvs_flash.h"
+
+#include "lwip/err.h"
+#include "lwip/sockets.h"
+#include "lwip/sys.h"
+#include <lwip/netdb.h>
+
 extern boolean connected;
 extern WiFiUDP udp;
 void WiFiEvent(WiFiEvent_t event);
 void connectToWiFi(const char * ssid, const char * pwd);
+void sendUDP(char data, int method);

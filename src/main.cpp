@@ -119,7 +119,8 @@ void loop()
     {
       
       ADS1.updateData();
-      //ADS2.updateData();
+      ADS2.updateData();
+      
     } 
     else{ //do nothing
     }
@@ -127,7 +128,7 @@ void loop()
    lastnewData  = newData;
 
   // when DRDY goes low-> read new data
-  // ADS1.updateData();
+  
 }
 
 /*--------------------------------------------------*/
@@ -135,10 +136,9 @@ void loop()
 /*--------------------------------------------------*/
 
 void Task_Blink(void *pvParameters)
-// This is a task for pulsating status LED
-{
+{ // This is a task for pulsating status LED
   int brightness = 0; // how bright the LED is
-  int fadeAmount = 5;
+  int fadeAmount = 15;
   (void)pvParameters;
   ledcSetup(ledpara.PWM_CHANNEL, ledpara.PWM_FREQUENCY, ledpara.PWM_RESOUTION);
   ledcAttachPin(ledRed, ledpara.PWM_CHANNEL);
@@ -153,13 +153,12 @@ void Task_Blink(void *pvParameters)
     {
       fadeAmount = -fadeAmount;
     }
-    vTaskDelay(100); // one tick delay (15ms) in between reads for stability
+    vTaskDelay(300); // one tick delay (15ms) in between reads for stability
   }
 }
 
-void TaskRead_BAT_V(void *pvParameters)
-// This is a task for serial printing Battery voltage
-{
+void TaskRead_BAT_V(void *pvParameters){
+  // This is a task for serial printing Battery voltage
   (void)pvParameters;
   for (;;)
   {
@@ -170,46 +169,7 @@ void TaskRead_BAT_V(void *pvParameters)
     Serial.print("Battery Voltage: ");
     Serial.println(BatteryVoltage);
 
-    vTaskDelay(4000);
+    vTaskDelay(600000); // every minute
   }
 }
 
-void Task_printADSdata(void *pvParameters)
-// This is a task for serial printing one ADS1299 reading
-{
-  static long outputCount = 0;
-  (void)pvParameters;
-  for (;;)
-  {
-    if (digitalRead(PIN_NUM_DRDY_1) == LOW)
-    {
-      digitalWrite(PIN_CS_1, LOW);
-      //        long output[100][9];
-      long output[9];
-      long dataPacket;
-      for (int i = 0; i < 9; i++)
-      {
-        for (int j = 0; j < 3; j++)
-        {
-          // byte dataByte = vspi->transfer(0x00);
-          // dataPacket = (dataPacket << 8) | dataByte;
-        }
-        //            output[outputCount][i] = dataPacket;
-        output[i] = dataPacket;
-        dataPacket = 0;
-      }
-      digitalWrite(PIN_CS_1, HIGH);
-      Serial.print(outputCount);
-      Serial.print(", ");
-      for (int i = 0; i < 9; i++)
-      {
-        Serial.print(output[i], HEX);
-        if (i != 8)
-          Serial.print(", ");
-      }
-      Serial.println();
-      outputCount++;
-      vTaskDelay(2000);
-    }
-  }
-}

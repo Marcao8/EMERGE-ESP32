@@ -406,15 +406,18 @@ void ADS1299::updateData()
           // Serial.print(results_mV[i],8);
           // if (i != 8) Serial.print(",");
           // if (i=8) Serial.println();
+          byte dump = Serial.read();
         }
       }
 
-      // Send a packet ~ 1ms
-      udp.beginPacket(udpAddress, udpPort);
-      udp.printf("%f,%f,%f,%f,%f,%f,%f,%f,%d\n", results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
-      udp.endPacket();
+    char buffer[180];
+    snprintf(buffer,180, "%f,%f,%f,%f,%f,%f,%f,%f,%d\n", 
+      results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
+    udp.beginPacket(udpAddress, udpPort);
+    udp.print(buffer);
+    udp.endPacket();
       packetloss++;
-      Serial.println();
+   
     }
     digitalWrite(CS, HIGH);
   }

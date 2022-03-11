@@ -47,3 +47,47 @@ void WiFiEvent(WiFiEvent_t event){
       default: break;
     }
 }
+
+void sendUDP(char data, int method){
+   const char buffer = data;
+    //udp.beginPacket(udpAddress,udpPort);
+    //udp.print(buffer);
+    // CLIENT: 
+
+sockaddr_in _send_addr;
+_send_addr.sin_family         = AF_INET,
+_send_addr.sin_port           = htons( udpPort );
+// also tried local broadcast 192.168.4.255
+_send_addr.sin_addr.s_addr    = inet_addr( udpAddress ); 
+_send_addr.sin_len            = sizeof( _send_addr );
+
+
+int _sock;
+_sock = socket( AF_INET, SOCK_DGRAM, IPPROTO_IP );
+
+int broadcast = 1;
+setsockopt( _sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast) );
+
+//sendto( _sock, buffer, 180, 0, (const struct sockaddr*) &_send_addr.sin_addr.s_addr,
+  // sizeof(_send_addr) );
+/*
+      s = socket(AF_INET, SOCK_DGRAM, 0);
+      sendto(s,*buffer,size,flags,to,tolen);
+      udp.beginPacket(udpAddress, udpPort);
+      int err = sendto(sock, rx_buffer, len, 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
+                if (err < 0) {
+                    ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+                    break;
+                }
+    /
+    for (int i = 0; i < strlen(buffer); i++)
+      {   udp.write(buffer[i]);   }
+      // Send a packet ~ 1ms
+     udp.beginPacket(udpAddress, udpPort);
+      udp.printf("%f,%f,%f,%f,%f,%f,%f,%f,%d\n", results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
+      
+      */
+     //udp.endPacket();
+     
+
+}
