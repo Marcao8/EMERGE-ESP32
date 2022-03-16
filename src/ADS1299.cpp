@@ -30,8 +30,7 @@ ADS1299::ADS1299()
   pinMode(SCK, OUTPUT);
   pinMode(MOSI, OUTPUT);
   pinMode(MISO, INPUT);
-  //vspi = new SPIClass(VSPI);
-  
+  // vspi = new SPIClass(VSPI);
 }
 
 /**
@@ -54,11 +53,11 @@ void ADS1299::setup_master(int _DRDY, int _CS)
   digitalWrite(SCK, LOW);
   digitalWrite(MOSI, LOW);
   digitalWrite(SS, HIGH);
-  //SPI Setup
-  SPI.begin(SCK, MISO, MOSI);											//Initialize SPI library
-	SPI.setBitOrder(MSBFIRST);								//Most significant Bit first
-	SPI.setFrequency(spiClk);					//Sets SPI clock
-	SPI.setDataMode(SPI_MODE1);								//// 1...2.4 MHz, clock polarity = 0; clock phase = 1 (pg. 8)
+  // SPI Setup
+  SPI.begin(SCK, MISO, MOSI); // Initialize SPI library
+  SPI.setBitOrder(MSBFIRST);  // Most significant Bit first
+  SPI.setFrequency(spiClk);   // Sets SPI clock
+  SPI.setDataMode(SPI_MODE1); //// 1...2.4 MHz, clock polarity = 0; clock phase = 1 (pg. 8)
 
   // at startup all inputs must be low
   digitalWrite(PIN_NUM_RST, LOW);
@@ -74,14 +73,13 @@ void ADS1299::setup_master(int _DRDY, int _CS)
   delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
   // Setup Registers for master ADS
   // CLOCK: CLKSEL pin 1 (through R1); COnf1 1111 0xxx
-  WREG(CONFIG1,0b11110101); // Output CLK signal for second ADS, 500 SPS
+  WREG(CONFIG1, 0b11110101); // Output CLK signal for second ADS, 500 SPS
   // BIAS
   WREG(MISC1, 0x10);      // connect SRB1 to neg Electrodes
   WREG(CONFIG3, 0xEC);    // b’x1xx 1100  Turn on BIAS amplifier, set internal BIASREF voltage
-  WREG(BIAS_SENSN, 0x00); // CH1 - bias sensing-> all REFELEC
-  WREG(BIAS_SENSP, 0x0F); // CH1-CH4 + bias sensing
-
-  //Give slave time to react to external CLK
+  WREG(BIAS_SENSN, 0x01); // CH1 - bias sensing-> all REFELEC
+  WREG(BIAS_SENSP, 0x01); // CH1 + bias sensing
+  // Give slave time to react to external CLK
   delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
   Serial.println("ADS Master setup finished");
 }
@@ -170,7 +168,7 @@ void ADS1299::RESET()
 void ADS1299::START()
 {
   digitalWrite(CS, LOW);
-  SPI.transfer(_START);
+  //SPI.transfer(_START);
   digitalWrite(PIN_NUM_STRT, HIGH);
   delayMicroseconds(4 * TCLK_cycle); // wait 4 clk cycles after this command (DS pg.36)
   digitalWrite(CS, HIGH);
@@ -231,15 +229,15 @@ void ADS1299::SDATAC()
  * @param _address Single Register adress to read
  */
 byte ADS1299::RREG(byte _address)
-{                                           //  reads ONE register at _address
-  byte opcode1 = _address + 0x20;           //  RREG expects 001rrrrr where rrrrr = _address
-  digitalWrite(CS, LOW);                    //  open SPI
+{                                         //  reads ONE register at _address
+  byte opcode1 = _address + 0x20;         //  RREG expects 001rrrrr where rrrrr = _address
+  digitalWrite(CS, LOW);                  //  open SPI
   SPI.transfer(opcode1);                  //  opcode1
   SPI.transfer(0x00);                     //  opcode2
   regData[_address] = SPI.transfer(0x00); //  update mirror location with returned byte
-  digitalWrite(CS, HIGH);                   //  close SPI
-                                            // Serial.println(regData[_address]);
-  return regData[_address];                 // return requested register value
+  digitalWrite(CS, HIGH);                 //  close SPI
+                                          // Serial.println(regData[_address]);
+  return regData[_address];               // return requested register value
 }
 
 /**
@@ -250,7 +248,7 @@ byte ADS1299::RREG(byte _address)
  */
 void ADS1299::WREG(byte _address, byte _value)
 {
-  digitalWrite(CS, LOW);
+  digitalWrite(CS,LOW);
   // write one Register
   uint8_t opcode1 = _address + 0x40;
   // Send WREG command & address
@@ -260,7 +258,7 @@ void ADS1299::WREG(byte _address, byte _value)
   // Write the value to the register
   SPI.transfer(_value);
   digitalWrite(CS, HIGH);
-   //a 4 t_CLK (~2 us) period must separate the end of one byte (or command) and the next
+  // a 4 t_CLK (~2 us) period must separate the end of one byte (or command) and the next
 } //
 
 /*
@@ -335,7 +333,7 @@ void ADS1299::activateTestSignals(byte _channeladdress)
 {
   SDATAC();            // 0001 0001 Stop Data reading, to write new settings
   WREG(CONFIG3, 0xE0); // internal Reference Voltage 1110 0000 no bias
-  WREG(CONFIG1, 0xD6); // 0x96= 1001 0110 Daisy En 250 SPS |
+  //WREG(CONFIG1, 0xD6); // 0x96= 1001 0110 Daisy En 250 SPS |
   WREG(CONFIG2, 0xD0); // Config2: 0100(x40)0010(x02)->x00-> 11010000(D0) internal test signal
   // 0xD5 for faster higher test signal
   WREG(_channeladdress, 0x05); // CHnSET: 0100 0101 Setting: 00000101 no PGA, just activate a (1 mV x V REF / 2.4) Square-Wave Test Signal
@@ -348,7 +346,7 @@ void ADS1299::activateTestSignals(byte _channeladdress)
  */
 
 void ADS1299::setSingleended()
-{
+{                     // GAIN 1, normal electrode input -> 0x00
   WREG(CH1SET, 0x00); // measures normal on CH1
   WREG(CH2SET, 0x00); // measures normal on CH1
   WREG(CH3SET, 0x00); // measures normal on CH1
@@ -358,72 +356,56 @@ void ADS1299::setSingleended()
   WREG(CH7SET, 0x00); // measures normal on CH1
   WREG(CH8SET, 0x00);
 
-  WREG(MISC1, 0x10); // connect SRB1 to neg Electrodes
-  // Bias activate
-  WREG(CONFIG3, 0xEC);    // b’x1xx 1100  Turn on BIAS amplifier, set internal BIASREF voltage
-  WREG(BIAS_SENSN, 0x0F); // CH1-4 negative bias sensing
-  WREG(BIAS_SENSP, 0x0F); // CH1-CH4 pos bias sensing
+
 }
 
 /**
- * @brief retrieve the mos
+ * @brief retrieve the most recent data
  *
  */
-void ADS1299::updateData()
-{
-  calculateLSB(1, 4.5); // 4.5 Vref set
+float *ADS1299::updateData(){  
+  // keep array memory adress
+  static float results_mV[9];
+  calculateLSB(1, 4.5); // Gain,4.5 Vref set
   if (digitalRead(PIN_NUM_STRT == HIGH))
   { // read only if data can be available
     if (digitalRead(DRDY) == LOW)
     {
       digitalWrite(CS, LOW);
-      
 
       long output[9];
-      long dataPacket;
-      float results_mV[9];
+      long dataPacket = 0; //24 bit ADC reading
+      
       for (int i = 0; i < 9; i++)
       {
         for (int j = 0; j < 3; j++)
         {
-          byte dataByte = SPI.transfer(0x00);      // issue 3 SCLK cycles to read 24 bit
-          dataPacket = (dataPacket << 8) | dataByte; // left shift each Byte
+          byte dataByte = SPI.transfer(0x00);        // issue 3 SCLK cycles to read 24 bit
+          dataPacket = (dataPacket << 8) | dataByte; // right shift each Byte
         }
         output[i] = dataPacket; // save 9 entries, 3 Bytes each
         dataPacket = 0;
       }
-       
-      // digitalWrite(CS, HIGH); // HIGH too soon?
 
-      // Serial.print(", ");
       for (int i = 1; i < 9; i++)
-      { // exclude ADS status bits at [0]
+      { // exclude ADS status bits at i=0 [0]
         // Serial.print(output[i], DEC);
         results_mV[i] = convertHEXtoVolt(output[i]); // convertHEXtoVolt()
-        if (Serial.available())
-        {
-          Serial.printf("%f,%f,%f,%f,%f,%f,%f,%f,%d\n", results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
-          // Serial.print(results_mV[i],8);
-          // if (i != 8) Serial.print(",");
-          // if (i=8) Serial.println();
-          byte dump = Serial.read();
-        }
       }
-
-    char buffer[180];
-    snprintf(buffer,180, "%f,%f,%f,%f,%f,%f,%f,%f,%d\n", 
-      results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
-    udp.beginPacket(udpAddress, udpPort);
-    udp.print(buffer);
-    udp.endPacket();
-      packetloss++;
-   
+      
+      /*
+      char buffer[162];
+      snprintf(buffer, 162, "%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
+               results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
+      udp.beginPacket(udpAddress, udpPort);
+      udp.print(buffer);
+      udp.endPacket();
+      packetloss++; */
     }
     digitalWrite(CS, HIGH);
   }
-  
+  return results_mV;
 }
-
 
 /**
  * Translate received Bytes from ADS Settings to human readible format
@@ -533,7 +515,8 @@ void ADS1299::Task_data(void *param) // const
   // working
 
   while (1)
-  { Serial.println("Hello from ADS task");
+  {
+    Serial.println("Hello from ADS task");
     vTaskDelay(3300 / portTICK_PERIOD_MS);
   }
 }

@@ -41,9 +41,12 @@ void setup()
   pinMode(ledBlue, OUTPUT);
   pinMode(ledGreen, OUTPUT);
   pinMode(ledRed, OUTPUT);
+  digitalWrite(ledBlue, 1);
+  digitalWrite(ledRed, 1);
   Serial.begin(2000000);
 
   ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
+
   // ADS2 = new ADS1299;
   ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
 
@@ -97,19 +100,49 @@ void setup()
     while (1)
     {
       delay(1000);
-    }
+    } 
   }
-
+  digitalWrite(ledRed, 0);
+  ADS1.setSingleended();
+  ADS2.setSingleended();
+//  ADS2.activateTestSignals(CH1SET);
+//  ADS2.activateTestSignals(CH2SET);
+//  ADS2.activateTestSignals(CH3SET);
+//  ADS2.activateTestSignals(CH4SET);
+//  ADS2.activateTestSignals(CH5SET);
+//  ADS2.activateTestSignals(CH6SET);
+//  ADS2.activateTestSignals(CH7SET);
+//  ADS2.activateTestSignals(CH8SET);
    ADS1.START();
    ADS1.RDATAC();
+   delayMicroseconds(20 * TCLK_cycle);
    ADS2.RDATAC();
+  
+
+  Serial.printf("ADS1 CS: %d ; DRDY %D \n", ADS1.CS, ADS1.DRDY);
+  Serial.printf("ADS2 CS: %d ; DRDY %D \n", ADS2.CS, ADS2.DRDY);
   // Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
 }
 
 void loop()
 {
-  // only for debugging purposes
- int newData = digitalRead(PIN_NUM_DRDY_1);
+
+     float* mydata2;
+      float* mydata1;
+     
+      mydata1 = ADS1.updateData();
+       mydata2 = ADS2.updateData();
+      sendUDP(mydata1,mydata2);
+  
+  
+
+  // when DRDY goes low-> read new data
+  
+}
+
+/*------------------------
+    // only for debugging purposes
+ int newData = digitalRead(PIN_NUM_DRDY_2);
  static int lastnewData = 0; //remains over current loop
   
   if (newData != lastnewData)
@@ -118,20 +151,12 @@ void loop()
     if (newData == LOW)
     {
       
-      ADS1.updateData();
-      ADS2.updateData();
-      
     } 
     else{ //do nothing
     }
   }
    lastnewData  = newData;
-
-  // when DRDY goes low-> read new data
-  
-}
-
-/*--------------------------------------------------*/
+--------------------------*/
 /*---------------------- Tasks ---------------------*/
 /*--------------------------------------------------*/
 
@@ -141,7 +166,7 @@ void Task_Blink(void *pvParameters)
   int fadeAmount = 15;
   (void)pvParameters;
   ledcSetup(ledpara.PWM_CHANNEL, ledpara.PWM_FREQUENCY, ledpara.PWM_RESOUTION);
-  ledcAttachPin(ledRed, ledpara.PWM_CHANNEL);
+  ledcAttachPin(ledGreen, ledpara.PWM_CHANNEL);
 
   for (;;) // A Task shall never return or exit.
   {

@@ -29,4 +29,4 @@ extern boolean connected;
 extern WiFiUDP udp;
 void WiFiEvent(WiFiEvent_t event);
 void connectToWiFi(const char * ssid, const char * pwd);
-void sendUDP(char data, int method);
+void sendUDP(float data_array1[],float data_array2[]);

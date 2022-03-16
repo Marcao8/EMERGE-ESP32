@@ -55,24 +55,24 @@ public:
   void WREG(byte _address, byte _value);                              //
   void WREG(byte _address, byte _value, byte _numRegistersMinusOne);  //
 
-  void updateData();
+  
   
 
   //SPI Library 
   byte transfer(byte _data);
 
   //------------------------//
-  void activateTestSignals(byte _channeladdress);  // Activate a (1 mV x V REF / 2.4) Square-Wave Test Signal on all Channels
+  void activateTestSignals(byte _channeladdress); 
   float convertHEXtoVolt(long hexdata);  //convert Data Bytes to float Voltage values
+  float* updateData();
   void attachInterrupt();
   void detachInterrupt();  // Default
   void begin();            // Default
   void end();
-  void setBitOrder(uint8_t);
-  void setDataMode(uint8_t);
-  void setClockDivider(uint8_t);
+  
   void calculateLSB(uint8_t gain, float vref);
   void setSingleended();
+  
   //------------------------//
   void TI_setup(); // for Debugging purpose
 

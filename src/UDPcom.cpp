@@ -48,6 +48,28 @@ void WiFiEvent(WiFiEvent_t event){
     }
 }
 
+void sendUDP(float data_array1[],float data_array2[]){
+char buffer[400];
+static int packetloss;
+      snprintf(buffer, 400, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
+               data_array1[1], data_array1[2], data_array1[3], data_array1[4], data_array1[5], data_array1[6], data_array1[7], data_array1[8],
+               data_array2[1], data_array2[2], data_array2[3], data_array2[4], data_array2[5], data_array2[6], data_array2[7], data_array2[8], packetloss);
+      udp.beginPacket(udpAddress, udpPort);
+      udp.print(buffer);
+      udp.endPacket();
+      packetloss++;
+  if (Serial.available())
+      {
+        Serial.println(buffer);
+        // empty the RX buffer, so that only one ADS reading will be putput per incoming message
+        byte dump = Serial.read();
+      }
+}
+
+
+
+
+/*
 void sendUDP(char data, int method){
    const char buffer = data;
     //udp.beginPacket(udpAddress,udpPort);
@@ -86,8 +108,9 @@ setsockopt( _sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast) );
      udp.beginPacket(udpAddress, udpPort);
       udp.printf("%f,%f,%f,%f,%f,%f,%f,%f,%d\n", results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
       
-      */
+      
      //udp.endPacket();
      
 
 }
+*/
