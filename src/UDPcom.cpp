@@ -6,6 +6,7 @@ boolean connected = false;
 //The udp library class
 WiFiUDP udp;
 
+
 //Connect to the WiFi network
  void connectToWiFi(const char * ssid, const char * pwd){
   Serial.println("Connecting to WiFi network: " + String(ssid));
@@ -49,9 +50,10 @@ void WiFiEvent(WiFiEvent_t event){
 }
 
 void sendUDP(float data_array1[],float data_array2[]){
-char buffer[400];
+int buffersize = 210;
+char buffer[buffersize];
 static int packetloss;
-      snprintf(buffer, 400, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
+      snprintf(buffer, buffersize, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
                data_array1[1], data_array1[2], data_array1[3], data_array1[4], data_array1[5], data_array1[6], data_array1[7], data_array1[8],
                data_array2[1], data_array2[2], data_array2[3], data_array2[4], data_array2[5], data_array2[6], data_array2[7], data_array2[8], packetloss);
       udp.beginPacket(udpAddress, udpPort);
@@ -66,8 +68,22 @@ static int packetloss;
       }
 }
 
+void sendUDPbin(float data_array1[],float data_array2[]){
 
+udp.beginPacket(udpAddress, udpPort);  
+//udp.write(data_array1);
+udp.endPacket();
+}
 
+void floatToByte(byte* arr, float value)
+{
+      long l = *(long*) &value;
+
+      arr[0] = l & 0x00FF;
+      arr[1] = (l >> 8) & 0x00FF;
+      arr[2] = (l >> 16) & 0x00FF;
+      arr[3] = l >> 24;
+}
 
 /*
 void sendUDP(char data, int method){

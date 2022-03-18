@@ -30,7 +30,7 @@ public:
   long outputCount; // For packet loss testing
   int stat_1, stat_2;    // used to hold the status register for boards 1 and 2
   unsigned short int ChGain[8]; // gain for each channel
-  
+  static float results_mV[9]; // contains resulting data
   void setup_master(int _DRDY, int _CS);
   void setup_slave(int _DRDY, int _CS);
   
@@ -65,6 +65,7 @@ public:
   void activateTestSignals(byte _channeladdress); 
   float convertHEXtoVolt(long hexdata);  //convert Data Bytes to float Voltage values
   float* updateData();
+  float *updateResponder();
   void attachInterrupt();
   void detachInterrupt();  // Default
   void begin();            // Default

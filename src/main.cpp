@@ -22,6 +22,7 @@
 #include "UDPcom.h"
 #include "ADS1299.hh" // own Lib
 
+
 // Instances
 LEDparameter ledpara; // define the width of signal or also on time
 
@@ -32,15 +33,17 @@ ADS1299 ADS2; //HILFELEISTENDE:R
 // Task function declarations
 void Task_Blink(void *pvParameters);
 void TaskRead_BAT_V(void *pvParameters);
+void IRAM_ATTR DRDY_ISR();
 
 // Are we currently connected?
 long outputCount = 0;
-
+bool data_ready = false;
 void setup()
 {
   pinMode(ledBlue, OUTPUT);
   pinMode(ledGreen, OUTPUT);
   pinMode(ledRed, OUTPUT);
+  pinMode(12,OUTPUT);
   digitalWrite(ledBlue, 1);
   digitalWrite(ledRed, 1);
   Serial.begin(2000000);
@@ -104,40 +107,52 @@ void setup()
   }
   digitalWrite(ledRed, 0);
   ADS1.setSingleended();
-  ADS2.setSingleended();
-//  ADS2.activateTestSignals(CH1SET);
-//  ADS2.activateTestSignals(CH2SET);
-//  ADS2.activateTestSignals(CH3SET);
-//  ADS2.activateTestSignals(CH4SET);
-//  ADS2.activateTestSignals(CH5SET);
-//  ADS2.activateTestSignals(CH6SET);
-//  ADS2.activateTestSignals(CH7SET);
-//  ADS2.activateTestSignals(CH8SET);
-   ADS1.START();
+  //ADS2.setSingleended();
+ADS2.activateTestSignals(CH1SET);
+ADS2.activateTestSignals(CH2SET);
+ADS2.activateTestSignals(CH3SET);
+ADS2.activateTestSignals(CH4SET);
+ADS2.activateTestSignals(CH5SET);
+ADS2.activateTestSignals(CH6SET);
+ADS2.activateTestSignals(CH7SET);
+ADS2.activateTestSignals(CH8SET);
+   //ADS1.START();
+   digitalWrite(PIN_NUM_STRT,HIGH);
    ADS1.RDATAC();
    delayMicroseconds(20 * TCLK_cycle);
    ADS2.RDATAC();
   
 
-  Serial.printf("ADS1 CS: %d ; DRDY %D \n", ADS1.CS, ADS1.DRDY);
-  Serial.printf("ADS2 CS: %d ; DRDY %D \n", ADS2.CS, ADS2.DRDY);
+  Serial.printf("ADS1 CS: %d ; DRDY %d \n", ADS1.CS, ADS1.DRDY);
+  Serial.printf("ADS2 CS: %d ; DRDY %d \n", ADS2.CS, ADS2.DRDY);
+ADS1.START();
+  //interrupt for DRDY
+  attachInterrupt(PIN_NUM_DRDY_1, DRDY_ISR, FALLING);
   // Now the task scheduler, which takes over control of scheduling individual tasks, is automatically started.
 }
 
 void loop()
 {
 
-     float* mydata2;
-      float* mydata1;
-     
-      mydata1 = ADS1.updateData();
-       mydata2 = ADS2.updateData();
-      sendUDP(mydata1,mydata2);
-  
-  
+  if (data_ready == true)
+  { digitalWrite(12,LOW);
+    float mydata2[9];
+    float mydata1[9];
+    float* array; 
+    array = ADS1.updateData();
+    for (int i = 0; i < 9; i++) {
+    mydata1[i] = array[i];}
+
+    array = ADS2.updateData();
+    for (int i = 0; i < 9; i++) {
+    mydata2[i] = array[i];}
+
+    sendUDP(mydata1, mydata2);
+    data_ready = false;
+    digitalWrite(12,HIGH);
+  }
 
   // when DRDY goes low-> read new data
-  
 }
 
 /*------------------------
@@ -159,6 +174,13 @@ void loop()
 --------------------------*/
 /*---------------------- Tasks ---------------------*/
 /*--------------------------------------------------*/
+
+
+void IRAM_ATTR DRDY_ISR()
+{
+  data_ready = true;
+}
+
 
 void Task_Blink(void *pvParameters)
 { // This is a task for pulsating status LED

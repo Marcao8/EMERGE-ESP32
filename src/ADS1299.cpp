@@ -52,7 +52,7 @@ void ADS1299::setup_master(int _DRDY, int _CS)
   // doesn't handle automatically pulling SS low
   digitalWrite(SCK, LOW);
   digitalWrite(MOSI, LOW);
-  digitalWrite(SS, HIGH);
+  //digitalWrite(SS, HIGH);
   // SPI Setup
   SPI.begin(SCK, MISO, MOSI); // Initialize SPI library
   SPI.setBitOrder(MSBFIRST);  // Most significant Bit first
@@ -73,7 +73,7 @@ void ADS1299::setup_master(int _DRDY, int _CS)
   delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
   // Setup Registers for master ADS
   // CLOCK: CLKSEL pin 1 (through R1); COnf1 1111 0xxx
-  WREG(CONFIG1, 0b11110101); // Output CLK signal for second ADS, 500 SPS
+  WREG(CONFIG1, 0xB5); //F5 Output CLK signal for second ADS, 500 SPS
   // BIAS
   WREG(MISC1, 0x10);      // connect SRB1 to neg Electrodes
   WREG(CONFIG3, 0xEC);    // b’x1xx 1100  Turn on BIAS amplifier, set internal BIASREF voltage
@@ -98,6 +98,11 @@ void ADS1299::setup_slave(int _DRDY, int _CS)
   // MISO pin automatically overrides to INPUT.
   // initialise vspi with default pins
   // SCLK = 18, MISO = 19, MOSI = 23, SS = 5
+  SPI.begin(SCK, MISO, MOSI); // Initialize SPI library
+  SPI.setBitOrder(MSBFIRST);  // Most significant Bit first
+  SPI.setFrequency(spiClk);   // Sets SPI clock
+  SPI.setDataMode(SPI_MODE1); //// 1...2.4 MHz, clock polarity = 0; clock phase = 1 (pg. 8)
+
   pinMode(PIN_NUM_RST, OUTPUT);
   pinMode(PIN_NUM_STRT, OUTPUT);
   pinMode(PIN_NUM_PWD, OUTPUT);
@@ -107,7 +112,7 @@ void ADS1299::setup_slave(int _DRDY, int _CS)
   // doesn't handle automatically pulling SS low
   digitalWrite(SCK, LOW);
   digitalWrite(MOSI, LOW);
-  digitalWrite(SS, HIGH);
+  //digitalWrite(SS, HIGH);
 
   delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
   SDATAC();                           // DEVICE wakes up in RDATAC so no Registers could be written.
@@ -117,7 +122,7 @@ void ADS1299::setup_slave(int _DRDY, int _CS)
   // CLOCK: CLKSEL pin 0 (through J); COnf1 1101 0xxx
   // WREG(CONFIG1,0xF5); // Output CLK signal on
   // BIAS: power down the bias amp
-  WREG(CONFIG1, 0xD5); // No CLKOUT, 500 SPS
+  WREG(CONFIG1, 0x95); // No CLKOUT, 500 SPS
   WREG(MISC1, 0x10);   // connect SRB1 to neg Electrodes
   WREG(CONFIG3, 0x68); // 0 11 0 1 0 0 0  Turn down BIAS amplifier, set internal BIASREF voltage
 }
@@ -169,6 +174,8 @@ void ADS1299::START()
 {
   digitalWrite(CS, LOW);
   //SPI.transfer(_START);
+  digitalWrite(PIN_NUM_STRT, LOW);
+  delayMicroseconds(4 * TCLK_cycle); // wait 4 clk cycles after this command (DS pg.36)
   digitalWrite(PIN_NUM_STRT, HIGH);
   delayMicroseconds(4 * TCLK_cycle); // wait 4 clk cycles after this command (DS pg.36)
   digitalWrite(CS, HIGH);
@@ -229,14 +236,14 @@ void ADS1299::SDATAC()
  * @param _address Single Register adress to read
  */
 byte ADS1299::RREG(byte _address)
-{                                         //  reads ONE register at _address
+{  SDATAC();                               //  RDATAC must be stopped before reading 
   byte opcode1 = _address + 0x20;         //  RREG expects 001rrrrr where rrrrr = _address
   digitalWrite(CS, LOW);                  //  open SPI
   SPI.transfer(opcode1);                  //  opcode1
   SPI.transfer(0x00);                     //  opcode2
   regData[_address] = SPI.transfer(0x00); //  update mirror location with returned byte
   digitalWrite(CS, HIGH);                 //  close SPI
-                                          // Serial.println(regData[_address]);
+  RDATAC();                                // Continue reading
   return regData[_address];               // return requested register value
 }
 
@@ -346,7 +353,8 @@ void ADS1299::activateTestSignals(byte _channeladdress)
  */
 
 void ADS1299::setSingleended()
-{                     // GAIN 1, normal electrode input -> 0x00
+{ SDATAC();           
+// GAIN 1, normal electrode input -> 0x00
   WREG(CH1SET, 0x00); // measures normal on CH1
   WREG(CH2SET, 0x00); // measures normal on CH1
   WREG(CH3SET, 0x00); // measures normal on CH1
@@ -355,7 +363,7 @@ void ADS1299::setSingleended()
   WREG(CH6SET, 0x00); // measures normal on CH1
   WREG(CH7SET, 0x00); // measures normal on CH1
   WREG(CH8SET, 0x00);
-
+  RDATAC();
 
 }
 
@@ -365,12 +373,12 @@ void ADS1299::setSingleended()
  */
 float *ADS1299::updateData(){  
   // keep array memory adress
-  static float results_mV[9];
-  calculateLSB(1, 4.5); // Gain,4.5 Vref set
+  
+  static float results_mV[9]={0};
+  //calculateLSB(1, 4.5); // Gain,4.5 Vref set
   if (digitalRead(PIN_NUM_STRT == HIGH))
   { // read only if data can be available
-    if (digitalRead(DRDY) == LOW)
-    {
+   
       digitalWrite(CS, LOW);
 
       long output[9];
@@ -401,12 +409,53 @@ float *ADS1299::updateData(){
       udp.print(buffer);
       udp.endPacket();
       packetloss++; */
-    }
+    
     digitalWrite(CS, HIGH);
   }
   return results_mV;
 }
 
+float *ADS1299::updateResponder(){
+results_mV[9]={0};
+  calculateLSB(1, 4.5); // Gain,4.5 Vref set
+  if (digitalRead(PIN_NUM_STRT == HIGH))
+  { // read only if data can be available
+   
+      digitalWrite(CS, LOW);
+
+      long output[9];
+      long dataPacket = 0; //24 bit ADC reading
+      
+      for (int i = 0; i < 9; i++)
+      {
+        for (int j = 0; j < 3; j++)
+        {
+          byte dataByte = SPI.transfer(0x00);        // issue 3 SCLK cycles to read 24 bit
+          dataPacket = (dataPacket << 8) | dataByte; // right shift each Byte
+        }
+        output[i] = dataPacket; // save 9 entries, 3 Bytes each
+        dataPacket = 0;
+      }
+
+      for (int i = 1; i < 9; i++)
+      { // exclude ADS status bits at i=0 [0]
+        // Serial.print(output[i], DEC);
+        results_mV[i] = convertHEXtoVolt(output[i]); // convertHEXtoVolt()
+      }
+      
+      /*
+      char buffer[162];
+      snprintf(buffer, 162, "%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
+               results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
+      udp.beginPacket(udpAddress, udpPort);
+      udp.print(buffer);
+      udp.endPacket();
+      packetloss++; */
+    
+    digitalWrite(CS, HIGH);
+  }
+  return results_mV;
+} 
 /**
  * Translate received Bytes from ADS Settings to human readible format
  */
