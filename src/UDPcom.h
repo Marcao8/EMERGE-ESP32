@@ -38,6 +38,6 @@ extern boolean connected;
 extern WiFiUDP udp;
 void WiFiEvent(WiFiEvent_t event);
 void connectToWiFi(const char * ssid, const char * pwd);
-void sendUDP(float data_array1[],float data_array2[]);
+void sendUDP(double data_array1[],double data_array2[]);
 void sendUDPbin(float data_array1[],float data_array2[]);
 void floatToByte(byte* arr, float value);

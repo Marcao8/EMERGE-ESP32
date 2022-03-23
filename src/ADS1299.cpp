@@ -22,7 +22,6 @@ ADS1299::ADS1299()
     ChGain[i] = GAIN; // initial Gain for all channels
   }
   LSB = ((2 * 4.5) / GAIN) / (16777216 - 1); // 2*Vref+-/GAIN/(2^24bits -1)
-  Serial.println("ADS constructed");
   packetloss = 0;
   // **** ----- SPI Setup ----- **** //
   // initialise instance of the SPIClass attached to VSPI
@@ -73,15 +72,15 @@ void ADS1299::setup_master(int _DRDY, int _CS)
   delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
   // Setup Registers for master ADS
   // CLOCK: CLKSEL pin 1 (through R1); COnf1 1111 0xxx
-  WREG(CONFIG1, 0xB5); //F5 Output CLK signal for second ADS, 500 SPS
+  WREG(CONFIG1, 0xF5); //F5 Output CLK signal for second ADS, 500 SPS
   // BIAS
-  WREG(MISC1, 0x10);      // connect SRB1 to neg Electrodes
+  WREG(MISC1, 0x20);      // connect SRB1 to neg Electrodes
   WREG(CONFIG3, 0xEC);    // b’x1xx 1100  Turn on BIAS amplifier, set internal BIASREF voltage
   WREG(BIAS_SENSN, 0x01); // CH1 - bias sensing-> all REFELEC
   WREG(BIAS_SENSP, 0x01); // CH1 + bias sensing
   // Give slave time to react to external CLK
   delayMicroseconds(20 * TCLK_cycle); // Recommended 18 Tclk before using device
-  Serial.println("ADS Master setup finished");
+  
 }
 
 /**
@@ -103,9 +102,6 @@ void ADS1299::setup_slave(int _DRDY, int _CS)
   SPI.setFrequency(spiClk);   // Sets SPI clock
   SPI.setDataMode(SPI_MODE1); //// 1...2.4 MHz, clock polarity = 0; clock phase = 1 (pg. 8)
 
-  pinMode(PIN_NUM_RST, OUTPUT);
-  pinMode(PIN_NUM_STRT, OUTPUT);
-  pinMode(PIN_NUM_PWD, OUTPUT);
   pinMode(DRDY, INPUT);
   pinMode(CS, OUTPUT);
   // set up slave select pins as outputs as the Arduino API
@@ -124,7 +120,7 @@ void ADS1299::setup_slave(int _DRDY, int _CS)
   // BIAS: power down the bias amp
   WREG(CONFIG1, 0x95); // No CLKOUT, 500 SPS
   WREG(MISC1, 0x10);   // connect SRB1 to neg Electrodes
-  WREG(CONFIG3, 0x68); // 0 11 0 1 0 0 0  Turn down BIAS amplifier, set internal BIASREF voltage
+  WREG(CONFIG3,0xE8 ); //0x68 0 11 0 1 0 0 0  Turn down BIAS amplifier, set internal BIASREF voltage
 }
 
 // ADS1299 SPI Command Definitions (Datasheet, Pg. 35)
@@ -339,7 +335,7 @@ byte ADS1299::getDeviceID()
 void ADS1299::activateTestSignals(byte _channeladdress)
 {
   SDATAC();            // 0001 0001 Stop Data reading, to write new settings
-  WREG(CONFIG3, 0xE0); // internal Reference Voltage 1110 0000 no bias
+  WREG(CONFIG3, 0xEC); // internal Reference Voltage 1110 0000 no bias
   //WREG(CONFIG1, 0xD6); // 0x96= 1001 0110 Daisy En 250 SPS |
   WREG(CONFIG2, 0xD0); // Config2: 0100(x40)0010(x02)->x00-> 11010000(D0) internal test signal
   // 0xD5 for faster higher test signal
@@ -370,194 +366,102 @@ void ADS1299::setSingleended()
 /**
  * @brief retrieve the most recent data
  *
- */
+ *
+*/ 
 float *ADS1299::updateData(){  
   // keep array memory adress
-  
-  static float results_mV[9]={0};
+  static float results_mV1[9]={0};
+  float results_mV[9]={0};
+  if (digitalRead(PIN_NUM_STRT == HIGH))
+  { // read only if data can be available
+        
+        calculateLSB(1, 4.5); // Gain,4.5 Vref set
+      digitalWrite(CS, LOW);
+
+      long output[9]; // Output Array in Hex
+      long dataPacket = 0; //24 bit ADC reading
+      
+      for (int i = 0; i < 9; i++)
+      {
+        for (int j = 0; j < 3; j++)
+        {
+          byte dataByte = SPI.transfer(0x00);        // issue 3 SCLK cycles to read 24 bit
+          dataPacket = (dataPacket << 8) | dataByte; // right shift each Byte
+        }
+        output[i] = dataPacket; // save 9 entries, 3 Bytes each
+        dataPacket = 0;
+      }
+
+      for (int i = 1; i < 9; i++)
+      { // exclude ADS status bits at i=0 [0]
+        // Serial.print(output[i], DEC);
+        results_mV[i] = convertHEXtoVolt(output[i]); // convertHEXtoVolt()
+      }
+      
+      
+      char buffer[262];
+      snprintf(buffer, 262, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
+              results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8],
+               results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
+      udp.beginPacket(udpAddress, udpPort);
+      udp.print(buffer);
+      udp.endPacket();
+      packetloss++; 
+    
+    digitalWrite(CS, HIGH);
+  }
+  return results_mV1;
+}
+ 
+
+
+double* ADS1299::updateResponder(){
+  static double output[9];
   //calculateLSB(1, 4.5); // Gain,4.5 Vref set
   if (digitalRead(PIN_NUM_STRT == HIGH))
-  { // read only if data can be available
-   
+  { // read only if data can be available 
       digitalWrite(CS, LOW);
-
-      long output[9];
-      long dataPacket = 0; //24 bit ADC reading
-      
+    
       for (int i = 0; i < 9; i++)
       {
-        for (int j = 0; j < 3; j++)
-        {
-          byte dataByte = SPI.transfer(0x00);        // issue 3 SCLK cycles to read 24 bit
-          dataPacket = (dataPacket << 8) | dataByte; // right shift each Byte
-        }
-        output[i] = dataPacket; // save 9 entries, 3 Bytes each
-        dataPacket = 0;
+       res.mVresults[i]= readData();
       }
-
-      for (int i = 1; i < 9; i++)
-      { // exclude ADS status bits at i=0 [0]
-        // Serial.print(output[i], DEC);
-        results_mV[i] = convertHEXtoVolt(output[i]); // convertHEXtoVolt()
-      }
-      
+      digitalWrite(CS,HIGH);
       /*
-      char buffer[162];
-      snprintf(buffer, 162, "%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
-               results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
+      char buffer[262];
+      snprintf(buffer, 262, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
+                output[1], output[2], output[3], output[4], output[5], output[6], output[7], output[8],
+               output[1], output[2], output[3], output[4], output[5], output[6], output[7], output[8], packetloss);
       udp.beginPacket(udpAddress, udpPort);
       udp.print(buffer);
       udp.endPacket();
-      packetloss++; */
+      packetloss++; 
+    */
     
-    digitalWrite(CS, HIGH);
   }
-  return results_mV;
-}
-
-float *ADS1299::updateResponder(){
-results_mV[9]={0};
-  calculateLSB(1, 4.5); // Gain,4.5 Vref set
-  if (digitalRead(PIN_NUM_STRT == HIGH))
-  { // read only if data can be available
-   
-      digitalWrite(CS, LOW);
-
-      long output[9];
-      long dataPacket = 0; //24 bit ADC reading
-      
-      for (int i = 0; i < 9; i++)
-      {
-        for (int j = 0; j < 3; j++)
-        {
-          byte dataByte = SPI.transfer(0x00);        // issue 3 SCLK cycles to read 24 bit
-          dataPacket = (dataPacket << 8) | dataByte; // right shift each Byte
-        }
-        output[i] = dataPacket; // save 9 entries, 3 Bytes each
-        dataPacket = 0;
-      }
-
-      for (int i = 1; i < 9; i++)
-      { // exclude ADS status bits at i=0 [0]
-        // Serial.print(output[i], DEC);
-        results_mV[i] = convertHEXtoVolt(output[i]); // convertHEXtoVolt()
-      }
-      
-      /*
-      char buffer[162];
-      snprintf(buffer, 162, "%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
-               results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
-      udp.beginPacket(udpAddress, udpPort);
-      udp.print(buffer);
-      udp.endPacket();
-      packetloss++; */
-    
-    digitalWrite(CS, HIGH);
-  }
-  return results_mV;
+  return output;
 } 
-/**
- * Translate received Bytes from ADS Settings to human readible format
- */
-void ADS1299::printRegisterName(byte _address)
+
+double ADS1299::readData()
 {
-  if (_address == ID)
-  {
-    Serial.print("ID, ");
-  }
-  else if (_address == CONFIG1)
-  {
-    Serial.print("CONFIG1, ");
-  }
-  else if (_address == CONFIG2)
-  {
-    Serial.print("CONFIG2, ");
-  }
-  else if (_address == CONFIG3)
-  {
-    Serial.print("CONFIG3, ");
-  }
-  else if (_address == LOFF)
-  {
-    Serial.print("LOFF, ");
-  }
-  else if (_address == CH1SET)
-  {
-    Serial.print("CH1SET, ");
-  }
-  else if (_address == CH2SET)
-  {
-    Serial.print("CH2SET, ");
-  }
-  else if (_address == CH3SET)
-  {
-    Serial.print("CH3SET, ");
-  }
-  else if (_address == CH4SET)
-  {
-    Serial.print("CH4SET, ");
-  }
-  else if (_address == CH5SET)
-  {
-    Serial.print("CH5SET, ");
-  }
-  else if (_address == CH6SET)
-  {
-    Serial.print("CH6SET, ");
-  }
-  else if (_address == CH7SET)
-  {
-    Serial.print("CH7SET, ");
-  }
-  else if (_address == CH8SET)
-  {
-    Serial.print("CH8SET, ");
-  }
-  else if (_address == BIAS_SENSP)
-  {
-    Serial.print("BIAS_SENSP, ");
-  }
-  else if (_address == BIAS_SENSN)
-  {
-    Serial.print("BIAS_SENSN, ");
-  }
-  else if (_address == LOFF_SENSP)
-  {
-    Serial.print("LOFF_SENSP, ");
-  }
-  else if (_address == LOFF_SENSN)
-  {
-    Serial.print("LOFF_SENSN, ");
-  }
-  else if (_address == LOFF_FLIP)
-  {
-    Serial.print("LOFF_FLIP, ");
-  }
-  else if (_address == LOFF_STATP)
-  {
-    Serial.print("LOFF_STATP, ");
-  }
-  else if (_address == LOFF_STATN)
-  {
-    Serial.print("LOFF_STATN, ");
-  }
-  else if (_address == GPIO)
-  {
-    Serial.print("GPIO, ");
-  }
-  else if (_address == MISC1)
-  {
-    Serial.print("MISC1, ");
-  }
-  else if (_address == MISC2)
-  {
-    Serial.print("MISC2, ");
-  }
-  else if (_address == CONFIG4)
-  {
-    Serial.print("CONFIG4, ");
-  }
+	uint8_t ADC_data[3]; 
+  ADC_data[0] = SPI.transfer(0x00); //ADC_data[0] holds the MSB
+  ADC_data[1] = SPI.transfer(0x00);
+  ADC_data[2] = SPI.transfer(0x00); //ADC_data[2] holds the LSB
+  
+	/* Return the 32-bit sign-extended conversion result */
+	int32_t signByte;
+	if (ADC_data[0] & 0x80u)	{ signByte = 0xFF000000; }
+	else						{ signByte = 0x00000000; }
+
+	int32_t upperByte	= ((int32_t) ADC_data[0] & 0xFF) << 16;
+	int32_t middleByte	= ((int32_t) ADC_data[1] & 0xFF) << 8;
+	int32_t lowerByte	= ((int32_t) ADC_data[2] & 0xFF) << 0;
+   int32_t allNumber = (signByte | upperByte | middleByte | lowerByte);
+ double voltage = (double) allNumber* 0.000536441802978515625; // in mV
+	return voltage;
 }
+
 
 void ADS1299::Task_data(void *param) // const
 {
@@ -599,15 +503,3 @@ void ADS1299::TI_setup()
   }
 }
 
-/*
-
-    //------------------------//
-    void ADS1299::attachInterrupt(){}
-    void ADS1299::detachInterrupt(){} // Default
-    void ADS1299::begin(){} // Default
-    void ADS1299::end(){}
-    void ADS1299::setBitOrder(uint8_t){}
-    void ADS1299::setDataMode(uint8_t){}
-    void ADS1299::setClockDivider(uint8_t){}
-    //------------------------//
-    */

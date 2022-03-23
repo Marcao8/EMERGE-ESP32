@@ -17,7 +17,9 @@
 // Wireless data transmission
 #include "UDPcom.h"
 
-
+struct results{
+double mVresults[9];
+};
 
 
 class ADS1299 {
@@ -27,13 +29,16 @@ public:
   //Attributes
   int DRDY; 
   int CS;  //pin numbers for "Data Ready" (DRDY) and "Chip Select" CS (Datasheet, pg. 26)
+  struct results res;
   long outputCount; // For packet loss testing
   int stat_1, stat_2;    // used to hold the status register for boards 1 and 2
   unsigned short int ChGain[8]; // gain for each channel
   static float results_mV[9]; // contains resulting data
+
+
+  // SETUP for devices
   void setup_master(int _DRDY, int _CS);
   void setup_slave(int _DRDY, int _CS);
-  
   //ADS1299 SPI Command Definitions (Datasheet, Pg. 35)
   //System Commands
   void WAKEUP();
@@ -65,7 +70,8 @@ public:
   void activateTestSignals(byte _channeladdress); 
   float convertHEXtoVolt(long hexdata);  //convert Data Bytes to float Voltage values
   float* updateData();
-  float *updateResponder();
+  double* updateResponder();
+  double readData();
   void attachInterrupt();
   void detachInterrupt();  // Default
   void begin();            // Default
@@ -76,7 +82,6 @@ public:
   
   //------------------------//
   void TI_setup(); // for Debugging purpose
-
   void Task_data(void * argument); //const
   TaskHandle_t				task_handle;
 
@@ -86,8 +91,6 @@ private:
   static void Task_read_DRDY(){}; // Task called by RTOS 
   float LSB; // unit for Voltage conversion
   byte regData [24];	// array is used to mirror register data
-  long channelData [16];	// array used when reading channel data board 1+2
-  String UDPstring;
   int packetloss;
 };
 

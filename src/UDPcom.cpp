@@ -49,23 +49,26 @@ void WiFiEvent(WiFiEvent_t event){
     }
 }
 
-void sendUDP(float data_array1[],float data_array2[]){
-int buffersize = 210;
+void sendUDP(double data_array1[],double data_array2[]){
+int buffersize = 410;
 char buffer[buffersize];
 static int packetloss;
       snprintf(buffer, buffersize, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
                data_array1[1], data_array1[2], data_array1[3], data_array1[4], data_array1[5], data_array1[6], data_array1[7], data_array1[8],
                data_array2[1], data_array2[2], data_array2[3], data_array2[4], data_array2[5], data_array2[6], data_array2[7], data_array2[8], packetloss);
+      digitalWrite(12,HIGH);
+      digitalWrite(12,LOW);
       udp.beginPacket(udpAddress, udpPort);
-      udp.print(buffer);
+      udp.printf(buffer);
       udp.endPacket();
       packetloss++;
-  if (Serial.available())
+ /* if (Serial.available())
       {
         Serial.println(buffer);
         // empty the RX buffer, so that only one ADS reading will be putput per incoming message
         byte dump = Serial.read();
       }
+      */
 }
 
 void sendUDPbin(float data_array1[],float data_array2[]){

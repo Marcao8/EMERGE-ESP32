@@ -42,7 +42,7 @@
 #define VSPI_MOSI   MOSI
 #define VSPI_SCLK   SCK
 #define VSPI_SS     SS 
-#define spiClk 2400000 //valid: 2.4 Mhz; to 1 MHz
+#define spiClk 5000000//2400000 //valid: 2.4 Mhz; to 1 MHz
 #define TCLK_cycle (1) //us for 1MHz SPIclk
 
 
