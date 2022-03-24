@@ -70,7 +70,7 @@ public:
   void activateTestSignals(byte _channeladdress); 
   float convertHEXtoVolt(long hexdata);  //convert Data Bytes to float Voltage values
   float* updateData();
-  double* updateResponder();
+  struct results updateResponder();
   double readData();
   void attachInterrupt();
   void detachInterrupt();  // Default

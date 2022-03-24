@@ -415,7 +415,7 @@ float *ADS1299::updateData(){
  
 
 
-double* ADS1299::updateResponder(){
+struct results ADS1299::updateResponder(){
   static double output[9];
   //calculateLSB(1, 4.5); // Gain,4.5 Vref set
   if (digitalRead(PIN_NUM_STRT == HIGH))
@@ -439,7 +439,7 @@ double* ADS1299::updateResponder(){
     */
     
   }
-  return output;
+  return res;
 } 
 
 double ADS1299::readData()

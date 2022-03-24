@@ -24,7 +24,7 @@ WiFiUDP udp;
   WiFi.setTxPower(WIFI_POWER_17dBm); //2 dBm before
   WiFi.setSleep(false); //latency improvement
     //Initiate connection
-  
+ 
 
   Serial.println("Waiting for WIFI connection...");
 }

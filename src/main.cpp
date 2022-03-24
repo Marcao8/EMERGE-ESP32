@@ -25,7 +25,6 @@
 
 // Instances
 LEDparameter ledpara; // define the width of signal or also on time
-
 ADS1299 ADS1; //AUFSEHER:IN
 ADS1299 ADS2; //HILFELEISTENDE:R
 
@@ -34,10 +33,10 @@ ADS1299 ADS2; //HILFELEISTENDE:R
 void Task_Blink(void *pvParameters);
 void TaskRead_BAT_V(void *pvParameters);
 void IRAM_ATTR DRDY_ISR();
-
-// Are we currently connected?
-long outputCount = 0;
+void ADSerrorcheck();
 bool data_ready = false;
+
+
 void setup()
 {
   pinMode(ledBlue, OUTPUT);
@@ -47,22 +46,13 @@ void setup()
   digitalWrite(ledBlue, 1);
   digitalWrite(ledRed, 1);
   Serial.begin(2000000);
-  delay(1);
+  
   ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
   // ADS2 = new ADS1299;
   delay(100); // wait for things to settle down
   ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
 
-  if (ADS1.getDeviceID() != 0b00111110)
-  {
-    ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
-    ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
-  }
-  else if (ADS2.getDeviceID() != 0b00111110)
-  {
-    ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
-    ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
-  }
+ ADSerrorcheck();
 
 
   // Now set up two tasks to run independently.
@@ -87,13 +77,13 @@ void setup()
 
   connectToWiFi(networkName, networkPswd);
   if (WiFi.waitForConnectResult() != WL_CONNECTED)
-  {
-    
+  { 
     while (1)
-    {
+    { 
       delay(1000);
     } 
   }
+  Serial.println("connected");
   digitalWrite(ledRed, 0);
   ADS1.setSingleended();
   ADS2.activateTestSignals(CH1SET);
@@ -120,19 +110,13 @@ void loop()
 
   if (data_ready == true)
   { digitalWrite(12,LOW);
-    double mydata2[9];
-    double mydata1[9];
-    double* array; 
-     array = ADS1.updateResponder();
-    
-   for (int i = 0; i < 9; i++) {
-    mydata1[i] = array[i];}
-   
-    array = ADS2.updateResponder();
-    for (int i = 0; i < 9; i++) {
-    mydata2[i] = array[i];}
 
-    sendUDP(mydata1, mydata2);
+    results ADS_1;
+    ADS_1 = ADS1.updateResponder();
+    results ADS_2;
+    ADS_2 = ADS2.updateResponder();
+
+    sendUDP(ADS_1.mVresults,ADS_2.mVresults);
     data_ready = false;
     digitalWrite(12,HIGH);
   }
@@ -189,3 +173,15 @@ void TaskRead_BAT_V(void *pvParameters){
   }
 }
 
+void ADSerrorcheck(){
+    if (ADS1.getDeviceID() != 0b00111110)
+  { ESP.restart();
+    ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
+    ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
+  }
+  else if (ADS2.getDeviceID() != 0b00111110)
+  { ESP.restart();
+    ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
+    ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
+  }
+}
