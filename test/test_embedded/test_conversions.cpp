@@ -42,6 +42,7 @@ void test_function_hextovolt_conversion(void) {
     TEST_ASSERT_EQUAL(-200.0, ADStest.convertHEXtoVolt( 0xD70A3D));
 }
 
+void blink();
 
 
 void setup() {
@@ -56,6 +57,12 @@ void setup() {
 }
 
 void loop() {
+// indicate that testsoftware upload was sucessfull
+blink();
+
+}
+
+void blink(){
     digitalWrite(13, HIGH);
     delay(100);
     digitalWrite(13, LOW);

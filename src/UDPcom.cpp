@@ -17,6 +17,7 @@ WiFiUDP udp;
   //register event handler
   WiFi.onEvent(WiFiEvent);
   WiFi.mode(WIFI_STA);
+  esp_wifi_set_ps(WIFI_PS_NONE); // or  WiFi.setSleep(false);
   WiFi.begin(ssid, pwd);
   WiFi.persistent(false);
   WiFi.setAutoConnect(false);
