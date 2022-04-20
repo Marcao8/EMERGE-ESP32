@@ -329,17 +329,17 @@ void ADS1299::activateTestSignals(byte _channeladdress)
  *
  */
 
-void ADS1299::setSingleended()
+void ADS1299::setSingleended(int configvalue)
 { SDATAC();           
 // GAIN 1, normal electrode input -> 0x00
-  WREG(CH1SET, 0x00); // measures normal on CH1
-  WREG(CH2SET, 0x00); // measures normal on CH1
-  WREG(CH3SET, 0x00); // measures normal on CH1
-  WREG(CH4SET, 0x00); // measures normal on CH1
-  WREG(CH5SET, 0x00); // measures normal on CH1
-  WREG(CH6SET, 0x00); // measures normal on CH1
-  WREG(CH7SET, 0x00); // measures normal on CH1
-  WREG(CH8SET, 0x00);
+  WREG(CH1SET, configvalue); // measures normal on CH1
+  WREG(CH2SET, configvalue); // measures normal on CH1
+  WREG(CH3SET, configvalue); // measures normal on CH1
+  WREG(CH4SET, configvalue); // measures normal on CH1
+  WREG(CH5SET, configvalue); // measures normal on CH1
+  WREG(CH6SET, configvalue); // measures normal on CH1
+  WREG(CH7SET, configvalue); // measures normal on CH1
+  WREG(CH8SET, configvalue);
   RDATAC();
 
 }
