@@ -168,7 +168,7 @@ void Task_Blink(void *pvParameters)
     {
       fadeAmount = -fadeAmount;
     }
-    vTaskDelay(300); // one tick delay (15ms) in between reads for stability
+    vTaskDelay(300/portTICK_PERIOD_MS); // one tick delay (15ms) in between reads for stability
   }
 }
 
@@ -187,7 +187,7 @@ void TaskRead_BAT_V(void *pvParameters){
     Serial.print("Battery Voltage: ");
     Serial.println(BatteryVoltage);
 
-    vTaskDelay(60000); // every minute
+    vTaskDelay(60000/portTICK_PERIOD_MS); // every minute
   }
 }
 
