@@ -24,18 +24,17 @@ double mVresults[9];
 
 class ADS1299 {
 public:
-  ADS1299();
+  
   
   //Attributes
   int DRDY; 
   int CS;  //pin numbers for "Data Ready" (DRDY) and "Chip Select" CS (Datasheet, pg. 26)
-  struct results res;
-  long outputCount; // For packet loss testing
+  struct results res; // contains Data
   int stat_1, stat_2;    // used to hold the status register for boards 1 and 2
   unsigned short int ChGain[8]; // gain for each channel
-  static float results_mV[9]; // contains resulting data
-
-
+  static float results_mV[9]; // contains resulting data, stays for all instances!
+  long outputCount; // For packet loss testing
+  ADS1299();
   // SETUP for devices
   void setup_master(int _DRDY, int _CS);
   void setup_slave(int _DRDY, int _CS);
@@ -70,12 +69,11 @@ public:
   void activateTestSignals(byte _channeladdress); 
   float convertHEXtoVolt(long hexdata);  //convert Data Bytes to float Voltage values
   float* updateData();
-  double* updateResponder();
+  struct results updateResponder();
   double readData();
   void attachInterrupt();
   void detachInterrupt();  // Default
-  void begin();            // Default
-  void end();
+ 
   
   void calculateLSB(uint8_t gain, float vref);
   void setSingleended();
@@ -91,7 +89,7 @@ private:
   static void Task_read_DRDY(){}; // Task called by RTOS 
   float LSB; // unit for Voltage conversion
   byte regData [24];	// array is used to mirror register data
-  int packetloss;
+  
 };
 
 #endif

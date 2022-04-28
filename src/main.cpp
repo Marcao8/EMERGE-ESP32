@@ -120,9 +120,11 @@ void loop()
 
   if (data_ready == true)
   { digitalWrite(12,LOW);
+    /*
     double mydata2[9];
     double mydata1[9];
-    double* array; 
+    //double* array; 
+    double* array;
      array = ADS1.updateResponder();
     
    for (int i = 0; i < 9; i++) {
@@ -134,6 +136,13 @@ void loop()
 
     sendUDP(mydata1, mydata2);
     data_ready = false;
+    */
+    	results ADS_1;
+      ADS_1 = ADS1.updateResponder();
+      results ADS_2;
+      ADS_2 = ADS2.updateResponder();
+      sendUDP(ADS_1.mVresults, ADS_2.mVresults);
+      data_ready = false;
     digitalWrite(12,HIGH);
   }
 

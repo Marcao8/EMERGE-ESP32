@@ -62,13 +62,13 @@ static int packetloss;
       udp.printf(buffer);
       udp.endPacket();
       packetloss++;
- /* if (Serial.available())
+  if (Serial.available())
       {
         Serial.println(buffer);
         // empty the RX buffer, so that only one ADS reading will be putput per incoming message
         byte dump = Serial.read();
       }
-      */
+      
 }
 
 void sendUDPbin(float data_array1[],float data_array2[]){

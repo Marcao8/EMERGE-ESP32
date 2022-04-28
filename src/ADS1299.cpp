@@ -11,6 +11,8 @@
 
 #include "ADS1299.hh"
 
+
+
 /**
  * @brief Construct a new ADS1299::ADS1299 object
  *
@@ -22,7 +24,7 @@ ADS1299::ADS1299()
     ChGain[i] = GAIN; // initial Gain for all channels
   }
   LSB = ((2 * 4.5) / GAIN) / (16777216 - 1); // 2*Vref+-/GAIN/(2^24bits -1)
-  packetloss = 0;
+  outputCount = 0;
   // **** ----- SPI Setup ----- **** //
   // initialise instance of the SPIClass attached to VSPI
   // SCLK = 18, MISO = 19, MOSI = 23, SS = 5
@@ -395,18 +397,18 @@ float *ADS1299::updateData(){
       for (int i = 1; i < 9; i++)
       { // exclude ADS status bits at i=0 [0]
         // Serial.print(output[i], DEC);
-        results_mV[i] = convertHEXtoVolt(output[i]); // convertHEXtoVolt()
+        results_mV1[i] = convertHEXtoVolt(output[i]); // convertHEXtoVolt()
       }
       
       
       char buffer[262];
       snprintf(buffer, 262, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
               results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8],
-               results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], packetloss);
+               results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], outputCount);
       udp.beginPacket(udpAddress, udpPort);
       udp.print(buffer);
       udp.endPacket();
-      packetloss++; 
+      outputCount++; 
     
     digitalWrite(CS, HIGH);
   }
@@ -415,14 +417,15 @@ float *ADS1299::updateData(){
  
 
 
-double* ADS1299::updateResponder(){
-  static double output[9];
+struct results ADS1299::updateResponder(){
+  const int numpckts = 9;
+  static double output[numpckts];
   //calculateLSB(1, 4.5); // Gain,4.5 Vref set
   if (digitalRead(PIN_NUM_STRT == HIGH))
   { // read only if data can be available 
       digitalWrite(CS, LOW);
     
-      for (int i = 0; i < 9; i++)
+      for (int i = 0; i < numpckts; i++)
       {
        res.mVresults[i]= readData();
       }
@@ -439,7 +442,7 @@ double* ADS1299::updateResponder(){
     */
     
   }
-  return output;
+  return res;
 } 
 
 double ADS1299::readData()
@@ -458,7 +461,8 @@ double ADS1299::readData()
 	int32_t middleByte	= ((int32_t) ADC_data[1] & 0xFF) << 8;
 	int32_t lowerByte	= ((int32_t) ADC_data[2] & 0xFF) << 0;
    int32_t allNumber = (signByte | upperByte | middleByte | lowerByte);
- double voltage = (double) allNumber* 0.000536441802978515625; // in mV
+  
+ double voltage = (double) allNumber* 0.000536441802978515625; // in mV *LSB
 	return voltage;
 }
 
