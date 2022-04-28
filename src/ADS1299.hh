@@ -76,7 +76,7 @@ public:
  
   
   void calculateLSB(uint8_t gain, float vref);
-  void setSingleended();
+  void setSingleended(int configvalue =0x00);
   
   //------------------------//
   void TI_setup(); // for Debugging purpose

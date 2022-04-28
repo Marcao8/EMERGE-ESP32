@@ -24,6 +24,8 @@
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_log.h"
+#include <esp_pm.h>
+#include <esp_wifi_types.h>
 
 #include "lwip/err.h"
 #include "lwip/sockets.h"

@@ -4,68 +4,68 @@
  * @brief EMERGE ECG main file
  * @version 0.1
  * @date 2022-03-02
- * @note
  * @copyright Copyright (c) 2022
- *  @note Run Tasks with RTOS on core 0
-1. Establish Serial connection from ESP32 to PC
-2. Setup SPI to 1 MHz for ADS com
-3. Setup ADS
-4. Acquire readings
-5. Send to PC
-6. Send to Host via UDP or ESPNOW
-7. Receive Settings (FIRMAMATA)
  */
 
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/timers.h"
+#include "freertos/event_groups.h"
 #include <Arduino.h>
-#include <SPI.h>    //external Library <>
+#include <SPI.h>    //external Lib <>
+
 #include "config.h" // Settings
-#include "UDPcom.h"
+#include "UDPcom.h" // own Lib
 #include "ADS1299.hh" // own Lib
 
 
 // Instances
-LEDparameter ledpara; // define the width of signal or also on time
-
-ADS1299 ADS1; //AUFSEHER:IN
-ADS1299 ADS2; //HILFELEISTENDE:R
-
-
+LEDparameter ledpara; // define LED parameters
+ADS1299 ADS1; 
+ADS1299 ADS2; 
 // Task function declarations
 void Task_Blink(void *pvParameters);
 void TaskRead_BAT_V(void *pvParameters);
-void IRAM_ATTR DRDY_ISR();
-
-// Are we currently connected?
-long outputCount = 0;
+void Task_DataProcess(void *pvParameters);
+void IRAM_ATTR DRDY_ISR(void);
+void ESPerrorcheck();
+void ADSerrorcheck();
+// Global variables
 bool data_ready = false;
+/* Stores the handle of the task that will be notified when the interrupt is called by ADS1299 */
+TaskHandle_t DataTaskHandle;
+
+
+
+
 void setup()
 {
   pinMode(ledBlue, OUTPUT);
   pinMode(ledGreen, OUTPUT);
   pinMode(ledRed, OUTPUT);
-  pinMode(12,OUTPUT);
+  //pinMode(12,OUTPUT);
   digitalWrite(ledBlue, 1);
   digitalWrite(ledRed, 1);
-  Serial.begin(2000000);
-  delay(1);
+  Serial.begin(115200);
+  
   ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
-  // ADS2 = new ADS1299;
-  delay(100); // wait for things to settle down
+  delay(10); // wait for clock to settle
   ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
 
-  if (ADS1.getDeviceID() != 0b00111110)
-  {
-    ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
-    ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
-  }
-  else if (ADS2.getDeviceID() != 0b00111110)
-  {
-    ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
-    ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
-  }
+ ESPerrorcheck();
+ ADSerrorcheck();
 
 
-  // Now set up two tasks to run independently.
+  // Now set up tasks to run independently.
+  xTaskCreate(    Task_DataProcess,
+                            "DataProcessTask",
+                            1024,
+                            NULL,
+                            1,
+                            &DataTaskHandle
+                          );
+
   xTaskCreatePinnedToCore(
       Task_Blink // Function to implement the task
       ,"Task Blink" // A name just for humans
@@ -80,33 +80,29 @@ void setup()
       ,NULL, 1 // Priority
       ,NULL, 0);
 
-  // xTaskCreatePinnedToCore(
-  //   (TaskFunction_t) &ADS1299::Task_data, "ADS1_DATA_TASK", 1024 // Stack size
-  //   ,NULL, 1 // Priority
-  //   ,NULL, 0); // core
+ 
 
   connectToWiFi(networkName, networkPswd);
   if (WiFi.waitForConnectResult() != WL_CONNECTED)
-  {
-    
+  { 
     while (1)
-    {
+    { 
       delay(1000);
     } 
   }
+  Serial.println("connected");
   digitalWrite(ledRed, 0);
   ADS1.setSingleended();
-  ADS2.activateTestSignals(CH1SET);
-  ADS2.activateTestSignals(CH2SET);
+  ADS2.setSingleended();
   ADS2.activateTestSignals(CH3SET);
   ADS2.activateTestSignals(CH4SET);
   ADS2.activateTestSignals(CH5SET);
   ADS2.activateTestSignals(CH6SET);
   ADS2.activateTestSignals(CH7SET);
   ADS2.activateTestSignals(CH8SET);
-  // ADS1.START();
-  ADS1.WREG(CONFIG3,0xEC); //Bias off
-  digitalWrite(PIN_NUM_STRT, HIGH);
+
+  ADS1.WREG(CONFIG3,0xEC); //Bias on
+  digitalWrite(PIN_NUM_STRT, HIGH); // Synchronize Start of ADC's
   ADS1.RDATAC();
   ADS2.RDATAC();
 
@@ -117,6 +113,7 @@ void setup()
 
 void loop()
 {
+<<<<<<< HEAD
 
   if (data_ready == true)
   { digitalWrite(12,LOW);
@@ -138,14 +135,26 @@ void loop()
     data_ready = false;
     */
     	results ADS_1;
+=======
+ if (data_ready == true)
+    {
+      //digitalWrite(12, LOW);
+      results ADS_1;
+>>>>>>> 2949c407ae57619843ee4a016fba3a9b76b744f3
       ADS_1 = ADS1.updateResponder();
       results ADS_2;
       ADS_2 = ADS2.updateResponder();
       sendUDP(ADS_1.mVresults, ADS_2.mVresults);
       data_ready = false;
+<<<<<<< HEAD
     digitalWrite(12,HIGH);
   }
 
+=======
+      //digitalWrite(12, HIGH);
+      
+    }
+>>>>>>> 2949c407ae57619843ee4a016fba3a9b76b744f3
   // when DRDY goes low-> read new data
 }
 
@@ -154,11 +163,22 @@ void loop()
 /*--------------------------------------------------*/
 
 
-void IRAM_ATTR DRDY_ISR()
+void IRAM_ATTR DRDY_ISR(void)
 {
-  data_ready = true;
+    data_ready = true;  
+    /* Wake up DataTask  */
+    //xTaskResumeFromISR( DataTaskHandle);
 }
 
+void Task_DataProcess(void *pvParameters)
+{
+  while (1)
+  {
+   
+    vTaskSuspend(NULL); //wait until rewoked by interrupt
+  }
+  //vTaskDelete(NULL); // delete own Task, never called
+}
 
 void Task_Blink(void *pvParameters)
 { // This is a task for pulsating status LED
@@ -178,7 +198,7 @@ void Task_Blink(void *pvParameters)
     {
       fadeAmount = -fadeAmount;
     }
-    vTaskDelay(300); // one tick delay (15ms) in between reads for stability
+    vTaskDelay(300/portTICK_PERIOD_MS); // one tick delay (15ms) in between reads for stability
   }
 }
 
@@ -191,10 +211,34 @@ void TaskRead_BAT_V(void *pvParameters){
     int rawADC = analogRead(BatteryPin);
     float BatteryVoltage = 2 * rawADC * 3.3 / 4095; // Voltage devider *ADC*
                                                     // print out the value you read:
+    //udp.beginPacket(udpAddress, udpPort);
+    //udp.printf("Battery Voltage: %f",BatteryVoltage);
+    //udp.endPacket();                                                
     Serial.print("Battery Voltage: ");
     Serial.println(BatteryVoltage);
 
-    vTaskDelay(600000); // every minute
+    vTaskDelay(60000/portTICK_PERIOD_MS); // every minute
   }
 }
+
+void ESPerrorcheck(){
+  log_d("Total heap: %d", ESP.getHeapSize());
+  log_d("Free heap: %d", ESP.getFreeHeap());
+  log_d("Total PSRAM: %d", ESP.getPsramSize());
+  log_d("Free PSRAM: %d", ESP.getFreePsram());
+}
+
+void ADSerrorcheck(){
+    if (ADS1.getDeviceID() != 0b00111110)
+  { ESP.restart();
+    ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
+    ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
+  }
+  else if (ADS2.getDeviceID() != 0b00111110)
+  { ESP.restart();
+    ADS1.setup_master(PIN_NUM_DRDY_1, PIN_CS_1);
+    ADS2.setup_slave(PIN_NUM_DRDY_2, PIN_CS_2);
+  }
+}
+
 

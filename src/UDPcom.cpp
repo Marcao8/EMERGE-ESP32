@@ -17,6 +17,7 @@ WiFiUDP udp;
   //register event handler
   WiFi.onEvent(WiFiEvent);
   WiFi.mode(WIFI_STA);
+  esp_wifi_set_ps(WIFI_PS_NONE); // or  WiFi.setSleep(false);
   WiFi.begin(ssid, pwd);
   WiFi.persistent(false);
   WiFi.setAutoConnect(false);
@@ -24,7 +25,7 @@ WiFiUDP udp;
   WiFi.setTxPower(WIFI_POWER_17dBm); //2 dBm before
   WiFi.setSleep(false); //latency improvement
     //Initiate connection
-  
+ 
 
   Serial.println("Waiting for WIFI connection...");
 }

@@ -288,26 +288,7 @@ void ADS1299::calculateLSB(uint8_t gain, float vref)
   LSB = 1000 * (vref) / (8388608);
 }
 
-/**
- * @brief Converts hexadecimal output of ADS to voltage value
- *
- * @param hexdata incoming 24 bit value
- * @return float output signed voltage in mV (LSB is ~nV)
- */
-float ADS1299::convertHEXtoVolt(long hexdata)
-{
-  int sign = hexdata & 0x800000; // AND data with MSB sign; from 8 to F is -
-  float voltage = 0.0;
-  if (sign == 0)
-  {
-    voltage = hexdata * LSB;
-  } // positive range
-  else
-  { // 2^24 negative range
-    voltage = (hexdata - 0xFFFFFF) * LSB;
-  }
-  return voltage;
-}
+
 
 /**
  * @brief Ask ADS1299 for device ID;
@@ -350,19 +331,85 @@ void ADS1299::activateTestSignals(byte _channeladdress)
  *
  */
 
-void ADS1299::setSingleended()
+void ADS1299::setSingleended(int configvalue)
 { SDATAC();           
 // GAIN 1, normal electrode input -> 0x00
-  WREG(CH1SET, 0x00); // measures normal on CH1
-  WREG(CH2SET, 0x00); // measures normal on CH1
-  WREG(CH3SET, 0x00); // measures normal on CH1
-  WREG(CH4SET, 0x00); // measures normal on CH1
-  WREG(CH5SET, 0x00); // measures normal on CH1
-  WREG(CH6SET, 0x00); // measures normal on CH1
-  WREG(CH7SET, 0x00); // measures normal on CH1
-  WREG(CH8SET, 0x00);
+  WREG(CH1SET, configvalue); // measures normal on CH1
+  WREG(CH2SET, configvalue); // measures normal on CH1
+  WREG(CH3SET, configvalue); // measures normal on CH1
+  WREG(CH4SET, configvalue); // measures normal on CH1
+  WREG(CH5SET, configvalue); // measures normal on CH1
+  WREG(CH6SET, configvalue); // measures normal on CH1
+  WREG(CH7SET, configvalue); // measures normal on CH1
+  WREG(CH8SET, configvalue);
   RDATAC();
 
+}
+
+
+/**
+ * @brief Reads a single 24 bit HEX and converts to voltage 
+ * 
+ * @return double voltage in mV
+ */
+double ADS1299::readData()
+{
+	uint8_t ADC_data[3]; 
+  ADC_data[0] = SPI.transfer(0x00); //ADC_data[0] holds the MSB
+  ADC_data[1] = SPI.transfer(0x00);
+  ADC_data[2] = SPI.transfer(0x00); //ADC_data[2] holds the LSB
+  
+	/* Return the 32-bit sign-extended conversion result */
+	int32_t signByte;
+	if (ADC_data[0] & 0x80u)	{ signByte = 0xFF000000; }
+	else						{ signByte = 0x00000000; }
+
+	int32_t upperByte	= ((int32_t) ADC_data[0] & 0xFF) << 16;
+	int32_t middleByte	= ((int32_t) ADC_data[1] & 0xFF) << 8;
+	int32_t lowerByte	= ((int32_t) ADC_data[2] & 0xFF) << 0;
+   int32_t allNumber = (signByte | upperByte | middleByte | lowerByte);
+ double voltage = (double) allNumber* 0.000536441802978515625; // in mV value for gain [1]
+	return voltage;
+}
+
+
+
+
+
+/*--------------------------------------------------*/
+/*----------------------  Deprecated functions ---------------------*/
+/*--------------------------------------------------*/
+
+void ADS1299::Task_data(void *param) // const
+{
+  // working
+
+  while (1)
+  {
+    Serial.println("Hello from ADS task");
+    vTaskDelay(3300 / portTICK_PERIOD_MS);
+  }
+}
+
+/**
+ * @brief Converts hexadecimal output of ADS to voltage value
+ *
+ * @param hexdata incoming 24 bit value
+ * @return float output signed voltage in mV (LSB is ~nV)
+ */
+float ADS1299::convertHEXtoVolt(long hexdata)
+{
+  int sign = hexdata & 0x800000; // AND data with MSB sign; from 8 to F is -
+  float voltage = 0.0;
+  if (sign == 0)
+  {
+    voltage = hexdata * LSB;
+  } // positive range
+  else
+  { // 2^24 negative range
+    voltage = (hexdata - 0xFFFFFF) * LSB;
+  }
+  return voltage;
 }
 
 /**
@@ -417,9 +464,15 @@ float *ADS1299::updateData(){
  
 
 
+<<<<<<< HEAD
 struct results ADS1299::updateResponder(){
   const int numpckts = 9;
   static double output[numpckts];
+=======
+
+struct results ADS1299::updateResponder(){
+  static double output[9];
+>>>>>>> 2949c407ae57619843ee4a016fba3a9b76b744f3
   //calculateLSB(1, 4.5); // Gain,4.5 Vref set
   if (digitalRead(PIN_NUM_STRT == HIGH))
   { // read only if data can be available 
@@ -445,6 +498,7 @@ struct results ADS1299::updateResponder(){
   return res;
 } 
 
+<<<<<<< HEAD
 double ADS1299::readData()
 {
 	uint8_t ADC_data[3]; 
@@ -478,6 +532,8 @@ void ADS1299::Task_data(void *param) // const
   }
 }
 
+=======
+>>>>>>> 2949c407ae57619843ee4a016fba3a9b76b744f3
 void ADS1299::TI_setup()
 {
   // TI SETUP https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/634236/ads1298-cannot-get-ecg-signal
