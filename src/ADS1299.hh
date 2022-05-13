@@ -18,6 +18,7 @@
 #include "UDPcom.h"
 
 struct results{
+int32_t rawresults[9];
 double mVresults[9];
 };
 
@@ -70,7 +71,8 @@ public:
   float convertHEXtoVolt(long hexdata);  //convert Data Bytes to float Voltage values
   float* updateData();
   struct results updateResponder();
-  double readData();
+  int32_t readData();
+  
   void attachInterrupt();
   void detachInterrupt();  // Default
  

@@ -15,8 +15,8 @@
 #define ARDUINO_RUNNING_CORE 1
 #endif
 
-#define BOARD_V3 0
-// Pins TODO: moveto Standardconstructor
+#define BOARD_V3 1
+
 #if BOARD_V3
 #define ledBlue 27
 #define ledGreen 14

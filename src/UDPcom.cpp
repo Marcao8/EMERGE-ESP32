@@ -6,13 +6,46 @@ boolean connected = false;
 //The udp library class
 WiFiUDP udp;
 
+void WiFiScan(){
+  boolean wifiFound = false;
+  int i,n;
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+ 
+  Serial.println(F("scan start"));
+  int nbVisibleNetworks = WiFi.scanNetworks();
+  Serial.println(F("scan done"));
+  if (nbVisibleNetworks == 0) {
+    Serial.println(F("no networks found. Restart in 1 second"));
+    while (true){
+    
+    };}
+
+  Serial.print(nbVisibleNetworks);
+  Serial.println(" network(s) found");
+  for ( i = 0; i < nbVisibleNetworks; ++i) {
+    Serial.println(WiFi.SSID(i)); // Print current SSID
+    for ( n = 0; n < known_ssid_count; n++) { // walk through the list of known SSID and check for a match
+      if (strcmp(ssid[n], WiFi.SSID(i).c_str())) {
+       
+      } else { // we got a match
+        wifiFound = true;
+        break; // n is the network index we found
+      }
+    } // end for each known wifi SSID
+    if (wifiFound) break; // break from the "for each visible network" loop
+  } // end for each visible network
+  found_ssid =n;
+ connectToWiFi(ssid[n],pswd[n]);
+}
 
 //Connect to the WiFi network
  void connectToWiFi(const char * ssid, const char * pwd){
   Serial.println("Connecting to WiFi network: " + String(ssid));
 
   // delete old config
-  WiFi.disconnect(true);
+  //WiFi.disconnect(true);
   
   //register event handler
   WiFi.onEvent(WiFiEvent);
@@ -44,6 +77,7 @@ void WiFiEvent(WiFiEvent_t event){
           break;
       case SYSTEM_EVENT_STA_DISCONNECTED:
           Serial.println("WiFi lost connection");
+          WiFi.reconnect();
           connected = false;
           break;
       default: break;
@@ -59,7 +93,7 @@ static int packetloss;
                data_array2[1], data_array2[2], data_array2[3], data_array2[4], data_array2[5], data_array2[6], data_array2[7], data_array2[8], packetloss);
       digitalWrite(12,HIGH);
       digitalWrite(12,LOW);
-      udp.beginPacket(udpAddress, udpPort);
+      udp.beginPacket(hostip[found_ssid], udpPort);
       udp.printf(buffer);
       udp.endPacket();
       packetloss++;

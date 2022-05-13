@@ -348,18 +348,18 @@ void ADS1299::setSingleended(int configvalue)
 
 
 /**
- * @brief Reads a single 24 bit HEX and converts to voltage 
+ * @brief Reads a single 24 bit HEX and converts to signed 4 byte 
  * 
- * @return double voltage in mV
+ * @return signed raw values, have to be scaled by LSB
  */
-double ADS1299::readData()
+int32_t ADS1299::readData()
 {
 	uint8_t ADC_data[3]; 
   ADC_data[0] = SPI.transfer(0x00); //ADC_data[0] holds the MSB
   ADC_data[1] = SPI.transfer(0x00);
   ADC_data[2] = SPI.transfer(0x00); //ADC_data[2] holds the LSB
   
-	/* Return the 32-bit sign-extended conversion result */
+	// Return the 32-bit sign-extended conversion result 
 	int32_t signByte;
 	if (ADC_data[0] & 0x80u)	{ signByte = 0xFF000000; }
 	else						{ signByte = 0x00000000; }
@@ -372,7 +372,34 @@ double ADS1299::readData()
 	return voltage;
 }
 
+struct results ADS1299::updateResponder(){
+ const int numpckts = 9;
+  static double output[numpckts];
 
+  //calculateLSB(1, 4.5); // Gain,4.5 Vref set
+  if (digitalRead(PIN_NUM_STRT == HIGH))
+  { // read only if data can be available 
+      digitalWrite(CS, LOW);
+    
+      for (int i = 0; i < numpckts; i++)
+      {
+       res.mVresults[i]= readData();
+      }
+      digitalWrite(CS,HIGH);
+      /*
+      char buffer[262];
+      snprintf(buffer, 262, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
+                output[1], output[2], output[3], output[4], output[5], output[6], output[7], output[8],
+               output[1], output[2], output[3], output[4], output[5], output[6], output[7], output[8], packetloss);
+      udp.beginPacket(udpAddress, udpPort);
+      udp.print(buffer);
+      udp.endPacket();
+      packetloss++; 
+    */
+    
+  }
+  return res;
+} 
 
 
 
@@ -449,7 +476,7 @@ float *ADS1299::updateData(){
       
       
       char buffer[262];
-      snprintf(buffer, 262, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
+      snprintf(buffer, 262, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%ld\n",
               results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8],
                results_mV[1], results_mV[2], results_mV[3], results_mV[4], results_mV[5], results_mV[6], results_mV[7], results_mV[8], outputCount);
       udp.beginPacket(udpAddress, udpPort);
@@ -464,76 +491,7 @@ float *ADS1299::updateData(){
  
 
 
-<<<<<<< HEAD
-struct results ADS1299::updateResponder(){
-  const int numpckts = 9;
-  static double output[numpckts];
-=======
 
-struct results ADS1299::updateResponder(){
-  static double output[9];
->>>>>>> 2949c407ae57619843ee4a016fba3a9b76b744f3
-  //calculateLSB(1, 4.5); // Gain,4.5 Vref set
-  if (digitalRead(PIN_NUM_STRT == HIGH))
-  { // read only if data can be available 
-      digitalWrite(CS, LOW);
-    
-      for (int i = 0; i < numpckts; i++)
-      {
-       res.mVresults[i]= readData();
-      }
-      digitalWrite(CS,HIGH);
-      /*
-      char buffer[262];
-      snprintf(buffer, 262, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
-                output[1], output[2], output[3], output[4], output[5], output[6], output[7], output[8],
-               output[1], output[2], output[3], output[4], output[5], output[6], output[7], output[8], packetloss);
-      udp.beginPacket(udpAddress, udpPort);
-      udp.print(buffer);
-      udp.endPacket();
-      packetloss++; 
-    */
-    
-  }
-  return res;
-} 
-
-<<<<<<< HEAD
-double ADS1299::readData()
-{
-	uint8_t ADC_data[3]; 
-  ADC_data[0] = SPI.transfer(0x00); //ADC_data[0] holds the MSB
-  ADC_data[1] = SPI.transfer(0x00);
-  ADC_data[2] = SPI.transfer(0x00); //ADC_data[2] holds the LSB
-  
-	/* Return the 32-bit sign-extended conversion result */
-	int32_t signByte;
-	if (ADC_data[0] & 0x80u)	{ signByte = 0xFF000000; }
-	else						{ signByte = 0x00000000; }
-
-	int32_t upperByte	= ((int32_t) ADC_data[0] & 0xFF) << 16;
-	int32_t middleByte	= ((int32_t) ADC_data[1] & 0xFF) << 8;
-	int32_t lowerByte	= ((int32_t) ADC_data[2] & 0xFF) << 0;
-   int32_t allNumber = (signByte | upperByte | middleByte | lowerByte);
-  
- double voltage = (double) allNumber* 0.000536441802978515625; // in mV *LSB
-	return voltage;
-}
-
-
-void ADS1299::Task_data(void *param) // const
-{
-  // working
-
-  while (1)
-  {
-    Serial.println("Hello from ADS task");
-    vTaskDelay(3300 / portTICK_PERIOD_MS);
-  }
-}
-
-=======
->>>>>>> 2949c407ae57619843ee4a016fba3a9b76b744f3
 void ADS1299::TI_setup()
 {
   // TI SETUP https://e2e.ti.com/support/data-converters-group/data-converters/f/data-converters-forum/634236/ads1298-cannot-get-ecg-signal
