@@ -89,9 +89,9 @@ int buffersize = 520;
 char buffer[buffersize];
 static int packetloss;
                                   // "%.9g" for float lossless ;"%.17g" for double
-      snprintf(buffer, buffersize, "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%d,%.3f\n",
+      snprintf(buffer, buffersize, "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%d\n",
                data_array1[1], data_array1[2], data_array1[3], data_array1[4], data_array1[5], data_array1[6], data_array1[7], data_array1[8],
-               data_array2[1], data_array2[2], data_array2[3], data_array2[4], data_array2[5], data_array2[6], data_array2[7], data_array2[8], packetloss, BatteryVoltage);
+               data_array2[1], data_array2[2], data_array2[3], data_array2[4], data_array2[5], data_array2[6], data_array2[7], data_array2[8], packetloss);
      
       digitalWrite(12,HIGH);
       digitalWrite(12,LOW);

@@ -1,7 +1,7 @@
 /**
  * @file main.cpp
  * @author Markus Baecker (markus.baecker(at)ovgu.de)
- * @brief EMERGE ECG main file
+ * @brief EMERGE ECG main file, part of research project EMERGE at Otto-von-Guericke Universtity, Germany
  * @version 0.1
  * @date 2022-03-02
  * @copyright Copyright (c) 2022
