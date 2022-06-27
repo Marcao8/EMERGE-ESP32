@@ -85,18 +85,21 @@ void WiFiEvent(WiFiEvent_t event){
 }
 
 void sendUDP(double data_array1[],double data_array2[]){
-int buffersize = 410;
+int buffersize = 520;
 char buffer[buffersize];
 static int packetloss;
-      snprintf(buffer, buffersize, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d\n",
+                                  // "%.9g" for float lossless ;"%.17g" for double
+      snprintf(buffer, buffersize, "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%d,%.3f\n",
                data_array1[1], data_array1[2], data_array1[3], data_array1[4], data_array1[5], data_array1[6], data_array1[7], data_array1[8],
-               data_array2[1], data_array2[2], data_array2[3], data_array2[4], data_array2[5], data_array2[6], data_array2[7], data_array2[8], packetloss);
+               data_array2[1], data_array2[2], data_array2[3], data_array2[4], data_array2[5], data_array2[6], data_array2[7], data_array2[8], packetloss, BatteryVoltage);
+     
       digitalWrite(12,HIGH);
       digitalWrite(12,LOW);
       udp.beginPacket(hostip[found_ssid], udpPort);
       udp.printf(buffer);
       udp.endPacket();
       packetloss++;
+      
   if (Serial.available())
       {
         Serial.println(buffer);
@@ -106,6 +109,41 @@ static int packetloss;
       
 }
 
+
+
+void TaskWiFialive(void * parameter){
+    for(;;){
+        if(WiFi.status() == WL_CONNECTED){
+            vTaskDelay(10000 / portTICK_PERIOD_MS);
+            continue;
+        }
+        Serial.println("[WIFI] Connecting");
+        WiFi.mode(WIFI_STA);
+        
+        WiFi.begin(ssid[found_ssid],pswd[found_ssid]);
+
+        unsigned long startAttemptTime = millis();
+
+        // Keep looping while we're not connected and haven't reached the timeout
+        while (WiFi.status() != WL_CONNECTED && 
+                millis() - startAttemptTime < WIFI_TIMEOUT_MS){}
+
+        // When we couldn't make a WiFi connection (or the timeout expired)
+		  // sleep for a while and then retry.
+        if(WiFi.status() != WL_CONNECTED){
+            Serial.println("[WIFI] FAILED");
+            vTaskDelay(WIFI_RECOVER_TIME_MS / portTICK_PERIOD_MS);
+			  continue;
+        }
+
+        Serial.println("[WIFI] Connected: " + WiFi.localIP());
+    }
+}
+
+
+
+/*
+//for more efficient, binary value sending
 void sendUDPbin(float data_array1[],float data_array2[]){
 
 udp.beginPacket(udpAddress, udpPort);  
@@ -123,7 +161,6 @@ void floatToByte(byte* arr, float value)
       arr[3] = l >> 24;
 }
 
-/*
 void sendUDP(char data, int method){
    const char buffer = data;
     //udp.beginPacket(udpAddress,udpPort);
